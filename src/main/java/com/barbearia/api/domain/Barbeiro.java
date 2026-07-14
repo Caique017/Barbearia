@@ -17,7 +17,8 @@ public class Barbeiro {
     private String email;
     @Column(nullable = false)
     private String senha;
-    private String horario_funcionamento;
+    @Column(name = "horario_funcionamento")
+    private String horarioFuncionamento;
     @Column(name = "criado_em", nullable = false, updatable = false)
     private Instant criadoEm;
 

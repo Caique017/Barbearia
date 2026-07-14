@@ -22,6 +22,7 @@ public class Cliente {
     private String email;
     @Column(nullable = true)
     private String senha;
+    @Column(name = "cadastro_completo")
     private boolean cadastroCompleto;
     @Column(name = "criado_em", nullable = false, updatable = false)
     private Instant criadoEm;

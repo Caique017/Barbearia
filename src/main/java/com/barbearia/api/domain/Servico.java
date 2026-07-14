@@ -18,9 +18,9 @@ public class Servico {
     private String nome;
     @Column(nullable = false)
     private BigDecimal preco;
-    @Column(nullable = false)
+    @Column(nullable = false, name = "duracao_minutos")
     private Integer duracaoMinutos;
-    @Column(nullable = false)
+    @Column(nullable = false, name = "custo_insumo")
     private BigDecimal custoInsumo = BigDecimal.ZERO;
     private boolean ativo = true;
 }

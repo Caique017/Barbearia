@@ -16,9 +16,9 @@ public class MovimentoFinanceiro {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agendamento_id", unique = true, nullable = false)
     private Agendamento agendamento;
-    @Column(nullable = false)
+    @Column(nullable = false, name = "valor_bruto")
     private BigDecimal valorBruto;
-    @Column(nullable = false)
+    @Column(nullable = false, name = "custo_insumo")
     private BigDecimal custoInsumo;
     @NotNull
     @Column(name = "lucro_liquido", nullable = false, precision = 10, scale = 2)

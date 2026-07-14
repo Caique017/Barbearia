@@ -25,8 +25,8 @@ public class Agendamento {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "remarcado_para_id")
     private Agendamento remarcadoPara;
-    @Column(nullable = false)
-    private LocalDateTime data_hora;
+    @Column(nullable = false, name = "data_hora")
+    private LocalDateTime dataHora;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StatusAgendamento status = StatusAgendamento.CONFIRMADO;
