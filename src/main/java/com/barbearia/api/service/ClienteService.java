@@ -21,6 +21,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @RequiredArgsConstructor
 @Service
 public class ClienteService {
@@ -33,8 +35,8 @@ public class ClienteService {
 
     @Transactional
     public ClienteResumoResponse cadastrarPeloBarbeiro(Usuario barbeiroLogado, ClienteRapidoRequest data) {
-        Barbeiro barbeiro = barbeiroRepository.findByUsuario(barbeiroLogado)
-                .orElseThrow(() -> new UsuarioNaoEncontradoException("Perfil de barbeiro não encontrado."));
+
+        Barbeiro barbeiro = buscarBarbeiro(barbeiroLogado);
 
         String telefone = normalizarTelefone(data.telefone());
 
@@ -113,5 +115,20 @@ public class ClienteService {
 
     private static String normalizarTelefone(String telefone) {
         return telefone == null ? null : telefone.replaceAll("\\D", "");
+    }
+
+    private Barbeiro buscarBarbeiro(Usuario usuario) {
+        return barbeiroRepository.findByUsuario(usuario)
+                .orElseThrow(() -> new UsuarioNaoEncontradoException("Perfil de barbeiro não encontrado."));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClienteResumoResponse> listarMeusClientes(Usuario barbeiroLogado) {
+
+        Barbeiro barbeiro = buscarBarbeiro(barbeiroLogado);
+
+        List<Cliente> clientes = clienteRepository.findByBarbeiroIdOrderByNomeAsc(barbeiro.getId());
+
+        return clientes.stream().map(c -> new ClienteResumoResponse(c.getId(), c.getNome(), c.getTelefone(), c.getUsuario() != null)).toList();
     }
 }
