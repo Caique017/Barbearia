@@ -31,13 +31,13 @@ public class AuthController {
     private final BarbeiroService barbeiroService;
     private final ClienteService clienteService;
 
-    @PostMapping("/registro")
+    @PostMapping("/barbeiro/registro")
     public ResponseEntity<BarbeiroCadastroResponse> registrar(@RequestBody @Valid BarbeiroCadastroRequest request) {
         BarbeiroCadastroResponse response = barbeiroService.registroBarbeiro(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/login")
+    @PostMapping("/barbeiro/login")
     public ResponseEntity<BarbeiroLoginResponse> login(@RequestBody @Valid BarbeiroLoginRequest request) {
         BarbeiroLoginResponse response = barbeiroService.loginBarbeiro(request);
         return ResponseEntity.ok(response);

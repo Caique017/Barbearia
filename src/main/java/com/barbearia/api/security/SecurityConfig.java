@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .userDetailsService(usuarioDetailsService)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST,
-                                "/auth/registro", "/auth/login",
+                                "/auth/barbeiro/registro", "/auth/barbeiro/login",
                                 "/auth/cliente/registro", "/auth/cliente/login").permitAll()
                         .anyRequest().authenticated()
                 )
