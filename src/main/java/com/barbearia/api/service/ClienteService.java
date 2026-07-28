@@ -38,23 +38,20 @@ public class ClienteService {
 
     @Transactional
     public ClienteResumoResponse cadastrarPeloBarbeiro(Usuario barbeiroLogado, ClienteRapidoRequest data) {
-
         Barbeiro barbeiro = buscarBarbeiro(barbeiroLogado);
 
-        String telefone = data.telefone();
-
-        if (clienteRepository.existsByTelefoneAndBarbeiroId(telefone, barbeiro.getId())) {
+        if (clienteRepository.existsByTelefoneAndBarbeiroId(data.telefone(), barbeiro.getId())) {
             throw new UsuarioExistenteException("Já existe um cliente com esse telefone.");
         }
 
         Cliente cliente = Cliente.builder()
                 .barbeiro(barbeiro)
                 .nome(data.nome())
-                .telefone(telefone)
+                .telefone(data.telefone())
                 .build();
         clienteRepository.save(cliente);
 
-        return new ClienteResumoResponse(cliente.getId(), cliente.getNome(), cliente.getTelefone(), false);
+        return resumo(cliente);
     }
 
     @Transactional
@@ -74,10 +71,8 @@ public class ClienteService {
                 .build();
         usuarioRepository.save(usuario);
 
-        String telefone = data.telefone();
-
         Cliente cliente = clienteRepository
-                .findByTelefoneAndBarbeiroId(telefone, barbeiro.getId())
+                .findByTelefoneAndBarbeiroId(data.telefone(), barbeiro.getId())
                 .orElse(null);
 
         if (cliente != null) {
@@ -91,7 +86,7 @@ public class ClienteService {
                     .usuario(usuario)
                     .barbeiro(barbeiro)
                     .nome(data.nome())
-                    .telefone(telefone)
+                    .telefone(data.telefone())
                     .build();
         }
         clienteRepository.save(cliente);
@@ -117,29 +112,32 @@ public class ClienteService {
         return new ClienteLoginResponse(usuario.getNome(), usuario.getEmail(), token);
     }
 
-    private Barbeiro buscarBarbeiro(Usuario usuario) {
-        return barbeiroRepository.findByUsuario(usuario)
-                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Perfil de barbeiro não encontrado."));
-    }
-
     @Transactional(readOnly = true)
     public List<ClienteResumoResponse> listarMeusClientes(Usuario barbeiroLogado) {
-
         Barbeiro barbeiro = buscarBarbeiro(barbeiroLogado);
 
-        List<Cliente> clientes = clienteRepository.findByBarbeiroIdOrderByNomeAsc(barbeiro.getId());
-
-        return clientes.stream().map(c -> new ClienteResumoResponse(c.getId(), c.getNome(), c.getTelefone(), c.getUsuario() != null)).toList();
+        return clienteRepository.findByBarbeiroIdOrderByNomeAsc(barbeiro.getId()).stream()
+                .map(this::resumo)
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public ClienteResumoResponse buscarMeuCliente(Usuario barbeiroLogado, UUID clienteId) {
         Barbeiro barbeiro = buscarBarbeiro(barbeiroLogado);
 
-        Cliente cliente = clienteRepository.findByIdAndBarbeiroId(clienteId, barbeiro
-                .getId())
+        Cliente cliente = clienteRepository.findByIdAndBarbeiroId(clienteId, barbeiro.getId())
                 .orElseThrow(() -> new ClienteNaoEncontradoException("Cliente não encontrado."));
 
-        return new ClienteResumoResponse(cliente.getId(), cliente.getNome(), cliente.getTelefone(), cliente.getUsuario() != null);
+        return resumo(cliente);
+    }
+
+    private Barbeiro buscarBarbeiro(Usuario usuario) {
+        return barbeiroRepository.findByUsuario(usuario)
+                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Perfil de barbeiro não encontrado."));
+    }
+
+    private ClienteResumoResponse resumo(Cliente cliente) {
+        return new ClienteResumoResponse(cliente.getId(), cliente.getNome(), cliente.getTelefone(),
+                cliente.getUsuario() != null);
     }
 }

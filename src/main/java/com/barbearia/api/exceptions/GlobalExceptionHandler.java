@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UsuarioExistenteException.class)
     public ResponseEntity<ErroResposta> tratarUsuarioExistente(UsuarioExistenteException ex,
                                                                HttpServletRequest request) {
-        return montar(HttpStatus.CONFLICT, ex.getMessage(), request, null);
+        return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -35,14 +35,13 @@ public class GlobalExceptionHandler {
                                                                   HttpServletRequest request) {
         log.warn("Violação de integridade ao processar {}: {}", request.getRequestURI(),
                 ex.getMostSpecificCause().getMessage());
-        return montar(HttpStatus.CONFLICT,
-                "Já existe um registro com esses dados.", request, null);
+        return montar(HttpStatus.CONFLICT, "Já existe um registro com esses dados.", request);
     }
 
     @ExceptionHandler({UsuarioNaoEncontradoException.class, ClienteNaoEncontradoException.class,
             BarbeiroNaoEncontradoException.class})
     public ResponseEntity<ErroResposta> tratarNaoEncontrado(RuntimeException ex, HttpServletRequest request) {
-        return montar(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+        return montar(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -57,38 +56,43 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErroResposta> tratarCorpoIlegivel(HttpMessageNotReadableException ex,
                                                             HttpServletRequest request) {
-        return montar(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido ou mal formatado.", request, null);
+        return montar(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido ou mal formatado.", request);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErroResposta> tratarTipoInvalido(MethodArgumentTypeMismatchException ex,
                                                            HttpServletRequest request) {
         return montar(HttpStatus.BAD_REQUEST,
-                "O parâmetro '" + ex.getName() + "' possui formato inválido.", request, null);
+                "O parâmetro '" + ex.getName() + "' possui formato inválido.", request);
     }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErroResposta> tratarNaoAutenticado(AuthenticationException ex,
                                                              HttpServletRequest request) {
         return montar(HttpStatus.UNAUTHORIZED,
-                "Autenticação necessária. Token ausente ou inválido.", request, null);
+                "Autenticação necessária. Token ausente ou inválido.", request);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErroResposta> tratarAcessoNegado(AccessDeniedException ex,
                                                            HttpServletRequest request) {
         return montar(HttpStatus.FORBIDDEN,
-                "Acesso negado. Você não tem permissão para acessar este recurso.", request, null);
+                "Acesso negado. Você não tem permissão para acessar este recurso.", request);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErroResposta> tratarGenerico(Exception ex, HttpServletRequest request) {
         log.error("Erro inesperado ao processar {}", request.getRequestURI(), ex);
-        return montar(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno inesperado.", request, null);
+        return montar(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno inesperado.", request);
     }
 
     private ErroResposta.CampoErro mapearCampo(FieldError erro) {
         return new ErroResposta.CampoErro(erro.getField(), erro.getDefaultMessage());
+    }
+
+    private ResponseEntity<ErroResposta> montar(HttpStatus status, String mensagem,
+                                                HttpServletRequest request) {
+        return montar(status, mensagem, request, null);
     }
 
     private ResponseEntity<ErroResposta> montar(HttpStatus status, String mensagem,
