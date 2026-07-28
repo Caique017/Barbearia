@@ -14,4 +14,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
     boolean existsByTelefoneAndBarbeiroId(String telefone, UUID barbeiroId);
 
     List<Cliente> findByBarbeiroIdOrderByNomeAsc(UUID barbeiroId);
+
+    Optional<Cliente> findByIdAndBarbeiroId(UUID id, UUID barbeiroId);
 }

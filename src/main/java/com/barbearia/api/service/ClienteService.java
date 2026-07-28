@@ -10,6 +10,8 @@ import com.barbearia.api.dto.auth.ClienteLoginResponse;
 import com.barbearia.api.dto.cliente.ClienteRapidoRequest;
 import com.barbearia.api.dto.cliente.ClienteResumoResponse;
 import com.barbearia.api.enums.Role;
+import com.barbearia.api.exceptions.BarbeiroNaoEncontradoException;
+import com.barbearia.api.exceptions.ClienteNaoEncontradoException;
 import com.barbearia.api.exceptions.UsuarioExistenteException;
 import com.barbearia.api.exceptions.UsuarioNaoEncontradoException;
 import com.barbearia.api.repositories.BarbeiroRepository;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
@@ -38,7 +41,7 @@ public class ClienteService {
 
         Barbeiro barbeiro = buscarBarbeiro(barbeiroLogado);
 
-        String telefone = normalizarTelefone(data.telefone());
+        String telefone = data.telefone();
 
         if (clienteRepository.existsByTelefoneAndBarbeiroId(telefone, barbeiro.getId())) {
             throw new UsuarioExistenteException("Já existe um cliente com esse telefone.");
@@ -61,7 +64,7 @@ public class ClienteService {
         }
 
         Barbeiro barbeiro = barbeiroRepository.findById(data.barbeiroId())
-                .orElseThrow(() -> new UsuarioNaoEncontradoException("Barbeiro não encontrado."));
+                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Barbeiro não encontrado."));
 
         Usuario usuario = Usuario.builder()
                 .nome(data.nome())
@@ -71,7 +74,7 @@ public class ClienteService {
                 .build();
         usuarioRepository.save(usuario);
 
-        String telefone = normalizarTelefone(data.telefone());
+        String telefone = data.telefone();
 
         Cliente cliente = clienteRepository
                 .findByTelefoneAndBarbeiroId(telefone, barbeiro.getId())
@@ -97,6 +100,7 @@ public class ClienteService {
         return new ClienteCadastroResponse(token, usuario.getNome(), usuario.getEmail());
     }
 
+    @Transactional(readOnly = true)
     public ClienteLoginResponse loginCliente(ClienteLoginRequest data) {
         Usuario usuario = usuarioRepository.findByEmail(data.email())
                 .orElseThrow(() -> new UsuarioNaoEncontradoException("E-mail ou senha incorretos."));
@@ -113,13 +117,9 @@ public class ClienteService {
         return new ClienteLoginResponse(usuario.getNome(), usuario.getEmail(), token);
     }
 
-    private static String normalizarTelefone(String telefone) {
-        return telefone == null ? null : telefone.replaceAll("\\D", "");
-    }
-
     private Barbeiro buscarBarbeiro(Usuario usuario) {
         return barbeiroRepository.findByUsuario(usuario)
-                .orElseThrow(() -> new UsuarioNaoEncontradoException("Perfil de barbeiro não encontrado."));
+                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Perfil de barbeiro não encontrado."));
     }
 
     @Transactional(readOnly = true)
@@ -130,5 +130,16 @@ public class ClienteService {
         List<Cliente> clientes = clienteRepository.findByBarbeiroIdOrderByNomeAsc(barbeiro.getId());
 
         return clientes.stream().map(c -> new ClienteResumoResponse(c.getId(), c.getNome(), c.getTelefone(), c.getUsuario() != null)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResumoResponse buscarMeuCliente(Usuario barbeiroLogado, UUID clienteId) {
+        Barbeiro barbeiro = buscarBarbeiro(barbeiroLogado);
+
+        Cliente cliente = clienteRepository.findByIdAndBarbeiroId(clienteId, barbeiro
+                .getId())
+                .orElseThrow(() -> new ClienteNaoEncontradoException("Cliente não encontrado."));
+
+        return new ClienteResumoResponse(cliente.getId(), cliente.getNome(), cliente.getTelefone(), cliente.getUsuario() != null);
     }
 }

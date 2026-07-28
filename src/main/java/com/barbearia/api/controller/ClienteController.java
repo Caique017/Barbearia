@@ -13,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/clientes")
@@ -35,5 +36,8 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.listarMeusClientes(usuario));
     }
 
-
+    @GetMapping("/{id}")
+    public ResponseEntity<ClienteResumoResponse> buscarMeuCliente(@AuthenticationPrincipal Usuario usuario, @PathVariable UUID id) {
+        return ResponseEntity.ok(clienteService.buscarMeuCliente(usuario, id));
+    }
 }

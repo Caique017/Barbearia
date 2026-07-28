@@ -8,6 +8,7 @@ import com.barbearia.api.dto.auth.BarbeiroLoginRequest;
 import com.barbearia.api.dto.auth.BarbeiroLoginResponse;
 import com.barbearia.api.dto.barbeiro.BarbeiroPerfilResponse;
 import com.barbearia.api.enums.Role;
+import com.barbearia.api.exceptions.BarbeiroNaoEncontradoException;
 import com.barbearia.api.exceptions.UsuarioExistenteException;
 import com.barbearia.api.exceptions.UsuarioNaoEncontradoException;
 import com.barbearia.api.repositories.BarbeiroRepository;
@@ -70,7 +71,7 @@ public class BarbeiroService {
     @Transactional(readOnly = true)
     public BarbeiroPerfilResponse buscarPerfil(Usuario usuario) {
         Barbeiro barbeiro = barbeiroRepository.findByUsuario(usuario)
-                .orElseThrow(() -> new UsuarioNaoEncontradoException("Perfil de barbeiro não encontrado."));
+                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Perfil de barbeiro não encontrado."));
 
         return new BarbeiroPerfilResponse(
                 barbeiro.getId(),
