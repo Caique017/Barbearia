@@ -15,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.List;
@@ -57,6 +58,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResposta> tratarCorpoIlegivel(HttpMessageNotReadableException ex,
                                                             HttpServletRequest request) {
         return montar(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido ou mal formatado.", request);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErroResposta> tratarRotaInexistente(NoResourceFoundException ex,
+                                                              HttpServletRequest request) {
+        return montar(HttpStatus.NOT_FOUND, "Recurso não encontrado.", request);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
