@@ -199,5 +199,7 @@ Vale saber antes de usar isso como referência:
 - **Token expira em 2h e não há refresh token**
 - **`Servico`, `Agendamento` e `MovimentoFinanceiro` não têm Lombok** — sem
   getters e setters, são inutilizáveis como estão
-- **`horarioFuncionamento` é texto livre**, vai precisar de estrutura de verdade
-  quando o agendamento chegar
+- **`horarioFuncionamento` ainda não tem endpoint de escrita**, então vem `null`
+  nas respostas. É a próxima coisa na fila
+- **O `slug` deriva do nome da pessoa**, não de um nome próprio da barbearia — o
+  barbeiro ainda não escolhe o próprio link
