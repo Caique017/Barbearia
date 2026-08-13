@@ -9,4 +9,7 @@ import java.util.UUID;
 
 public interface BarbeiroRepository extends JpaRepository<Barbeiro, UUID> {
     Optional<Barbeiro> findByUsuario(Usuario usuario);
+
+    Optional<Barbeiro> findBySlug(String slug);
+    boolean existsBySlug(String slug);
 }

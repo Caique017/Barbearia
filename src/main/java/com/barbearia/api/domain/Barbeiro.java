@@ -29,6 +29,9 @@ public class Barbeiro {
     @Column(name = "horario_funcionamento")
     private String horarioFuncionamento;
 
+    @Column(nullable = false, unique = true, length = 120)
+    private String slug;
+
     @Column(name = "criado_em", nullable = false, updatable = false)
     private Instant criadoEm;
 

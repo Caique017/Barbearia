@@ -35,6 +35,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/auth/barbeiro/registro", "/auth/barbeiro/login",
                                 "/auth/cliente/registro", "/auth/cliente/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/barbeiros/publico/*").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
