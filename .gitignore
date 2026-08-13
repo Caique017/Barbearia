@@ -2,6 +2,7 @@ HELP.md
 CONTEXT.md
 RESUMO.md
 TAREFA.md
+insomnia-reqs*
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
