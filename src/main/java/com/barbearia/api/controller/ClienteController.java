@@ -1,6 +1,7 @@
 package com.barbearia.api.controller;
 
 import com.barbearia.api.domain.Usuario;
+import com.barbearia.api.dto.cliente.ClienteAtualizacaoRequest;
 import com.barbearia.api.dto.cliente.ClienteRapidoRequest;
 import com.barbearia.api.dto.cliente.ClienteResumoResponse;
 import com.barbearia.api.service.ClienteService;
@@ -39,5 +40,25 @@ public class ClienteController {
     @GetMapping("/{id}")
     public ResponseEntity<ClienteResumoResponse> buscarMeuCliente(@AuthenticationPrincipal Usuario usuario, @PathVariable UUID id) {
         return ResponseEntity.ok(clienteService.buscarMeuCliente(usuario, id));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<ClienteResumoResponse> atualizarCliente(
+            @AuthenticationPrincipal Usuario usuario,
+            @PathVariable UUID id,
+            @RequestBody @Valid ClienteAtualizacaoRequest request) {
+        return ResponseEntity.ok(clienteService.atualizarCliente(usuario, id, request));
+    }
+
+    @PostMapping("/{id}/vinculo")
+    public ResponseEntity<ClienteResumoResponse> aprovarVinculo(@AuthenticationPrincipal Usuario usuario,
+                                                                @PathVariable UUID id) {
+        return ResponseEntity.ok(clienteService.aprovarVinculo(usuario, id));
+    }
+
+    @DeleteMapping("/{id}/vinculo")
+    public ResponseEntity<Void> recusarVinculo(@AuthenticationPrincipal Usuario usuario, @PathVariable UUID id) {
+        clienteService.recusarVinculo(usuario, id);
+        return ResponseEntity.noContent().build();
     }
 }

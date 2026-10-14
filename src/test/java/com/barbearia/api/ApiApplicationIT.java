@@ -2,9 +2,11 @@ package com.barbearia.api;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-class ApiApplicationTests {
+@Import(TestcontainersConfiguration.class)
+class ApiApplicationIT {
 
 	@Test
 	void contextLoads() {

@@ -6,6 +6,12 @@ public record ClienteResumoResponse(
         UUID id,
         String nome,
         String telefone,
-        boolean temConta
+        boolean temConta,
+        PedidoVinculo pedidoVinculo
 ) {
+    public record PedidoVinculo(
+            String nome,
+            String email
+    ) {
+    }
 }

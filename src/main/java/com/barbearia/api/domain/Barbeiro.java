@@ -26,6 +26,9 @@ public class Barbeiro {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @Column(name = "nome_barbearia", nullable = false, length = 120)
+    private String nomeBarbearia;
+
     @Column(name = "horario_funcionamento")
     private String horarioFuncionamento;
 
