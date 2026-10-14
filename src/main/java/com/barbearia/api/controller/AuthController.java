@@ -1,17 +1,17 @@
 package com.barbearia.api.controller;
 
 import com.barbearia.api.domain.Usuario;
-import com.barbearia.api.dto.auth.BarbeiroCadastroRequest;
-import com.barbearia.api.dto.auth.BarbeiroCadastroResponse;
-import com.barbearia.api.dto.auth.BarbeiroLoginRequest;
-import com.barbearia.api.dto.auth.BarbeiroLoginResponse;
-import com.barbearia.api.dto.auth.ClienteCadastroRequest;
-import com.barbearia.api.dto.auth.ClienteCadastroResponse;
-import com.barbearia.api.dto.auth.ClienteLoginRequest;
-import com.barbearia.api.dto.auth.ClienteLoginResponse;
-import com.barbearia.api.dto.auth.UsuarioLogadoResponse;
+import com.barbearia.api.dto.barbeiro.BarbeiroCadastroRequest;
+import com.barbearia.api.dto.barbeiro.BarbeiroCadastroResponse;
+import com.barbearia.api.dto.barbeiro.BarbeiroLoginRequest;
+import com.barbearia.api.dto.barbeiro.BarbeiroLoginResponse;
+import com.barbearia.api.dto.cliente.ClienteCadastroRequest;
+import com.barbearia.api.dto.cliente.ClienteCadastroResponse;
+import com.barbearia.api.dto.cliente.ClienteLoginRequest;
+import com.barbearia.api.dto.cliente.ClienteLoginResponse;
+import com.barbearia.api.dto.usuario.UsuarioLogadoResponse;
+import com.barbearia.api.service.AuthService;
 import com.barbearia.api.service.BarbeiroService;
-import com.barbearia.api.service.ClienteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final BarbeiroService barbeiroService;
-    private final ClienteService clienteService;
+    private final AuthService authService;
 
     @PostMapping("/barbeiro/registro")
     public ResponseEntity<BarbeiroCadastroResponse> registrar(@RequestBody @Valid BarbeiroCadastroRequest request) {
@@ -45,13 +45,13 @@ public class AuthController {
 
     @PostMapping("/cliente/registro")
     public ResponseEntity<ClienteCadastroResponse> registrarCliente(@RequestBody @Valid ClienteCadastroRequest request) {
-        ClienteCadastroResponse response = clienteService.cadastroCliente(request);
+        ClienteCadastroResponse response = authService.cadastroCliente(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/cliente/login")
     public ResponseEntity<ClienteLoginResponse> loginCliente(@RequestBody @Valid ClienteLoginRequest request) {
-        ClienteLoginResponse response = clienteService.loginCliente(request);
+        ClienteLoginResponse response = authService.loginCliente(request);
         return ResponseEntity.ok(response);
     }
 

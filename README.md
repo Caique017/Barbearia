@@ -28,8 +28,8 @@ o cliente abre já sabendo de qual barbearia se trata — sem digitar UUID nenhu
 # 1. crie o banco
 createdb -U postgres barbearia
 
-# 2. (recomendado) defina o segredo do JWT
-export API_SECURITY_TOKEN_SECRET="algo-longo-e-aleatorio"
+# 2. defina o segredo do JWT (obrigatório, mínimo 32 bytes)
+export API_SECURITY_TOKEN_SECRET="$(openssl rand -base64 48)"
 
 # 3. suba
 ./mvnw spring-boot:run
@@ -37,7 +37,9 @@ export API_SECURITY_TOKEN_SECRET="algo-longo-e-aleatorio"
 
 A API sobe em `http://localhost:8080`. O Flyway aplica as migrations no boot e o
 Hibernate valida se o schema bate com as entidades — se divergir, a aplicação
-**não sobe**, e é de propósito.
+**não sobe**, e é de propósito. O mesmo vale para o segredo do JWT: sem ele, ou
+com menos de 32 bytes, a aplicação se recusa a subir, em vez de assinar tokens
+com um valor que está no repositório.
 
 Usuário e senha do banco estão em `src/main/resources/application.properties`
 (`postgres`/`admin`, valores de desenvolvimento). Ajuste para o seu ambiente.
@@ -50,11 +52,14 @@ Usuário e senha do banco estão em `src/main/resources/application.properties`
 
 | | Método | Rota | O que faz |
 |---|---|---|---|
-| 🔓 | POST | `/auth/barbeiro/registro` | Cria usuário BARBEIRO + perfil e gera o slug. Devolve token |
+| 🔓 | POST | `/auth/barbeiro/registro` | Cria usuário BARBEIRO + perfil e gera o slug a partir do `nomeBarbearia`. Devolve token e slug |
 | 🔓 | POST | `/auth/barbeiro/login` | Valida credenciais e role. Devolve token |
-| 🔓 | POST | `/auth/cliente/registro` | Cria usuário CLIENTE vinculado ao barbeiro informado |
+| 🔓 | POST | `/auth/cliente/registro` | Cria usuário CLIENTE no barbeiro informado. Se o telefone já está na carteira, vira **pedido de vínculo** |
 | 🔓 | POST | `/auth/cliente/login` | Valida credenciais e role. Devolve token |
 | 🔒 | GET | `/auth/me` | Dados do usuário do token |
+
+Login inválido devolve **401**; 5 falhas seguidas no mesmo e-mail bloqueiam o
+login por 15 minutos (**429** com `Retry-After`).
 
 ### `/barbeiros`
 
@@ -62,6 +67,8 @@ Usuário e senha do banco estão em `src/main/resources/application.properties`
 |---|---|---|---|
 | 🔓 | GET | `/barbeiros/publico/{slug}` | Dados públicos da barbearia: `barbeiroId`, `nome`, `horarioFuncionamento` |
 | 🔒 | GET | `/barbeiros/me` | Perfil do barbeiro logado — **inclui e-mail** |
+| 🔒 | PATCH | `/barbeiros/me` | Edita `nomeBarbearia` e/ou `horarioFuncionamento`. Não mexe no slug |
+| 🔒 | PATCH | `/barbeiros/me/slug` | O barbeiro escolhe o próprio link. **409** se reservado ou ocupado |
 
 ### `/clientes` *(todos exigem role BARBEIRO)*
 
@@ -70,6 +77,9 @@ Usuário e senha do banco estão em `src/main/resources/application.properties`
 | 🔒 | POST | `/clientes` | Cadastro rápido pelo barbeiro (`nome` + `telefone`) |
 | 🔒 | GET | `/clientes` | Lista a carteira do barbeiro logado |
 | 🔒 | GET | `/clientes/{id}` | Detalhe de um cliente da própria carteira |
+| 🔒 | PATCH | `/clientes/{id}` | Corrige `nome` e/ou `telefone` |
+| 🔒 | POST | `/clientes/{id}/vinculo` | Aprova o pedido de vínculo da conta ao cliente |
+| 🔒 | DELETE | `/clientes/{id}/vinculo` | Recusa o pedido e apaga a conta que pediu |
 
 ### Formato de erro
 
@@ -143,8 +153,18 @@ antecipada nunca é atômica: quem barra duas requisições simultâneas é a
 constraint do banco, e o handler devolve 409 em vez de 500.
 
 **A mensagem de login é vaga de propósito.** `"E-mail ou senha incorretos."` para
-e-mail inexistente, role errada e senha errada — não se confirma ao atacante que
-o e-mail existe.
+e-mail inexistente, role errada e senha errada — e o BCrypt roda nos três casos,
+para o tempo de resposta também não denunciar se o e-mail existe. (O cadastro
+ainda responde "e-mail já está em uso", então isso dificulta, não impede, saber
+quem tem conta.)
+
+**Telefone não prova identidade.** Se alguém se cadastra como cliente com um
+telefone que já está na carteira do barbeiro, a conta **não** é ligada ao
+cliente automaticamente — vira um pedido que o barbeiro aprova ou recusa. Sem
+isso, quem soubesse o telefone de outra pessoa assumiria o cadastro dela.
+
+**E-mail é normalizado na entrada.** `Joao@Ex.com` e `joao@ex.com` são a mesma
+conta: os records de request aplicam `trim` + minúsculo antes da validação.
 
 **O claim `role` do token não autoriza nada.** O filtro recarrega o usuário do
 banco a cada requisição e usa a role de lá. Mudança de permissão tem efeito
@@ -163,11 +183,29 @@ com.barbearia.api
 ├── security/       SecurityConfig, SecurityFilter, TokenService,
 │                   UsuarioDetailsService, SecurityErrorHandler
 ├── service/        regra de negócio
-└── util/           Telefone
+├── util/           Telefone, Emails
+└── validation/     MaxBytes (limite de 72 bytes do BCrypt)
 ```
 
 Package-by-layer, decisão consciente. Package-by-feature só compensa em projeto
 maior — reavaliar quando o agendamento entrar.
+
+## Testes
+
+```bash
+./mvnw test     # unitários: sem banco, sem Docker, poucos segundos
+./mvnw verify   # unitários + integração (precisa do Docker rodando)
+```
+
+- **Unitários (`*Test`)** — JUnit 5, Mockito e AssertJ. Regras de slug,
+  validações dos DTOs, `AuthService`, `TokenService`, limite de tentativas
+- **Integração (`*IT`)** — `@SpringBootTest` + MockMvc contra um **PostgreSQL 17
+  de verdade** subido pelo Testcontainers. Não usam o seu banco local. Cobrem a
+  matriz de segurança (401/403 em toda rota protegida), os fluxos de perfil,
+  slug, carteira e vínculo, e as migrations com linhas preexistentes
+
+O CI (`.github/workflows/ci.yml`) roda `./mvnw verify` em todo push para
+`master` e em todo pull request.
 
 ## Roadmap
 
@@ -177,29 +215,28 @@ maior — reavaliar quando o agendamento entrar.
 - [x] Tratamento de erros padronizado
 - [x] Schema versionado com Flyway
 - [x] Link público de cadastro por slug
-- [ ] Nome próprio da barbearia + `PATCH` do slug
-- [ ] Extrair `AuthService` (login está duplicado entre os dois services)
+- [x] Nome próprio da barbearia + `PATCH` do slug
+- [x] Extrair `AuthService`
+- [x] Testes automatizados
 - [ ] CRUD de serviços
 - [ ] Agendamento
 - [ ] Movimento financeiro
 - [ ] CORS para o front
-- [ ] Testes automatizados
 
 ## Limitações conhecidas
 
 Vale saber antes de usar isso como referência:
 
-- **Não há testes automatizados.** Toda validação até aqui foi manual, via
-  Insomnia. Os starters de teste estão no `pom.xml` sem uso
 - **CORS não está configurado** — o navegador vai barrar a primeira chamada de um
   front em outra origem
 - **Credenciais do banco estão no `application.properties`** com valores de
-  desenvolvimento. O segredo do JWT já sai por variável de ambiente
-  (`API_SECURITY_TOKEN_SECRET`), com fallback local; o banco ainda não
+  desenvolvimento. Dá para sobrescrever com `SPRING_DATASOURCE_URL`,
+  `SPRING_DATASOURCE_USERNAME` e `SPRING_DATASOURCE_PASSWORD`
+- **O limite de tentativas de login fica em memória** — vale por instância e
+  zera quando a aplicação reinicia. Com mais de uma instância, precisa ir para
+  um armazenamento compartilhado (Redis) ou para a borda (proxy/gateway)
 - **Token expira em 2h e não há refresh token**
 - **`Servico`, `Agendamento` e `MovimentoFinanceiro` não têm Lombok** — sem
   getters e setters, são inutilizáveis como estão
-- **`horarioFuncionamento` ainda não tem endpoint de escrita**, então vem `null`
-  nas respostas. É a próxima coisa na fila
-- **O `slug` deriva do nome da pessoa**, não de um nome próprio da barbearia — o
-  barbeiro ainda não escolhe o próprio link
+- **Cliente de duas barbearias precisa de duas contas, com e-mails diferentes** —
+  o e-mail é único no sistema inteiro

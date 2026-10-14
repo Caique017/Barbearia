@@ -1,4 +1,4 @@
-package com.barbearia.api.dto.auth;
+package com.barbearia.api.dto.cliente;
 
 public record ClienteLoginResponse(
         String nome,

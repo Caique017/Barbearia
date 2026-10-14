@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -31,6 +32,12 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(SlugIndisponivelException.class)
+    public ResponseEntity<ErroResposta> tratarSlugIndisponivel(SlugIndisponivelException ex,
+                                                               HttpServletRequest request) {
+        return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErroResposta> tratarViolacaoIntegridade(DataIntegrityViolationException ex,
                                                                   HttpServletRequest request) {
@@ -39,10 +46,25 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.CONFLICT, "Já existe um registro com esses dados.", request);
     }
 
-    @ExceptionHandler({UsuarioNaoEncontradoException.class, ClienteNaoEncontradoException.class,
+    @ExceptionHandler({ClienteNaoEncontradoException.class, VinculoNaoEncontradoException.class,
             BarbeiroNaoEncontradoException.class})
     public ResponseEntity<ErroResposta> tratarNaoEncontrado(RuntimeException ex, HttpServletRequest request) {
         return montar(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(CredenciaisInvalidasException.class)
+    public ResponseEntity<ErroResposta> tratarCredenciaisInvalidas(CredenciaisInvalidasException ex,
+                                                                   HttpServletRequest request) {
+        return montar(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(TentativasExcedidasException.class)
+    public ResponseEntity<ErroResposta> tratarTentativasExcedidas(TentativasExcedidasException ex,
+                                                                  HttpServletRequest request) {
+        ResponseEntity<ErroResposta> resposta = montar(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), request);
+        return ResponseEntity.status(resposta.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getSegundosParaLiberar()))
+                .body(resposta.getBody());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -6,6 +6,8 @@ public record BarbeiroPerfilResponse(
         UUID barbeiroId,
         String nome,
         String email,
+        String nomeBarbearia,
+        String slug,
         String horarioFuncionamento
 ) {
 }

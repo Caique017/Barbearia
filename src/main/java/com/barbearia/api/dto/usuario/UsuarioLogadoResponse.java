@@ -1,4 +1,4 @@
-package com.barbearia.api.dto.auth;
+package com.barbearia.api.dto.usuario;
 
 import com.barbearia.api.enums.Role;
 

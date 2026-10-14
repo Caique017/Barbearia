@@ -29,6 +29,10 @@ public class Cliente {
     @JoinColumn(name = "usuario_id", nullable = true)
     private Usuario usuario;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_pendente_id")
+    private Usuario usuarioPendente;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "barbeiro_id", nullable = false)
     private Barbeiro barbeiro;

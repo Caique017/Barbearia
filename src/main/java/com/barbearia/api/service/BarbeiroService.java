@@ -2,16 +2,18 @@ package com.barbearia.api.service;
 
 import com.barbearia.api.domain.Barbeiro;
 import com.barbearia.api.domain.Usuario;
-import com.barbearia.api.dto.auth.BarbeiroCadastroRequest;
-import com.barbearia.api.dto.auth.BarbeiroCadastroResponse;
-import com.barbearia.api.dto.auth.BarbeiroLoginRequest;
-import com.barbearia.api.dto.auth.BarbeiroLoginResponse;
+import com.barbearia.api.dto.barbeiro.BarbeiroAtualizacaoRequest;
+import com.barbearia.api.dto.barbeiro.BarbeiroCadastroRequest;
+import com.barbearia.api.dto.barbeiro.BarbeiroCadastroResponse;
+import com.barbearia.api.dto.barbeiro.BarbeiroLoginRequest;
+import com.barbearia.api.dto.barbeiro.BarbeiroLoginResponse;
 import com.barbearia.api.dto.barbeiro.BarbeiroPerfilResponse;
 import com.barbearia.api.dto.barbeiro.BarbeiroPublicoResponse;
+import com.barbearia.api.dto.barbeiro.BarbeiroSlugRequest;
 import com.barbearia.api.enums.Role;
 import com.barbearia.api.exceptions.BarbeiroNaoEncontradoException;
+import com.barbearia.api.exceptions.SlugIndisponivelException;
 import com.barbearia.api.exceptions.UsuarioExistenteException;
-import com.barbearia.api.exceptions.UsuarioNaoEncontradoException;
 import com.barbearia.api.repositories.BarbeiroRepository;
 import com.barbearia.api.repositories.UsuarioRepository;
 import com.barbearia.api.security.TokenService;
@@ -36,6 +38,7 @@ public class BarbeiroService {
     private final BarbeiroRepository barbeiroRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final AuthService authService;
 
     @Transactional
     public BarbeiroCadastroResponse registroBarbeiro(BarbeiroCadastroRequest data) {
@@ -53,26 +56,19 @@ public class BarbeiroService {
 
         Barbeiro barbeiro = Barbeiro.builder()
                 .usuario(usuario)
-                .slug(gerarSlug(usuario.getNome()))
+                .nomeBarbearia(data.nomeBarbearia())
+                .horarioFuncionamento(data.horarioFuncionamento())
+                .slug(gerarSlug(data.nomeBarbearia()))
                 .build();
         barbeiroRepository.save(barbeiro);
 
         String token = tokenService.gerarToken(usuario);
 
-        return new BarbeiroCadastroResponse(token, usuario.getNome(), usuario.getEmail());
+        return new BarbeiroCadastroResponse(token, usuario.getNome(), usuario.getEmail(), barbeiro.getSlug());
     }
 
     public BarbeiroLoginResponse loginBarbeiro(BarbeiroLoginRequest data) {
-        Usuario usuario = usuarioRepository.findByEmail(data.email())
-                .orElseThrow(() -> new UsuarioNaoEncontradoException("E-mail ou senha incorretos."));
-
-        if (usuario.getRole() != Role.BARBEIRO) {
-            throw new UsuarioNaoEncontradoException("E-mail ou senha incorretos.");
-        }
-
-        if (!passwordEncoder.matches(data.senha(), usuario.getSenha())) {
-            throw new UsuarioNaoEncontradoException("E-mail ou senha incorretos.");
-        }
+        Usuario usuario = authService.login(data.email(), data.senha(), Role.BARBEIRO);
 
         String token = tokenService.gerarToken(usuario);
         return new BarbeiroLoginResponse(usuario.getNome(), usuario.getEmail(), token);
@@ -80,13 +76,66 @@ public class BarbeiroService {
 
     @Transactional(readOnly = true)
     public BarbeiroPerfilResponse buscarPerfil(Usuario usuario) {
-        Barbeiro barbeiro = barbeiroRepository.findByUsuario(usuario)
-                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Perfil de barbeiro não encontrado."));
+        return perfil(buscarBarbeiro(usuario), usuario);
+    }
 
+    @Transactional
+    public BarbeiroPerfilResponse atualizarPerfil(Usuario logado, BarbeiroAtualizacaoRequest data) {
+        Barbeiro barbeiro = buscarBarbeiro(logado);
+
+        if (data.nomeBarbearia() != null) {
+            barbeiro.setNomeBarbearia(data.nomeBarbearia());
+        }
+
+        if (data.horarioFuncionamento() != null) {
+            barbeiro.setHorarioFuncionamento(data.horarioFuncionamento());
+        }
+
+        return perfil(barbeiro, logado);
+    }
+
+    @Transactional
+    public BarbeiroPerfilResponse atualizarSlug(Usuario logado, BarbeiroSlugRequest data) {
+        Barbeiro barbeiro = buscarBarbeiro(logado);
+        String slug = data.slug();
+
+        if (SLUGS_RESERVADOS.contains(slug)) {
+            throw new SlugIndisponivelException("O link '" + slug + "' é reservado. Escolha outro.");
+        }
+
+        if (!slug.equals(barbeiro.getSlug()) && barbeiroRepository.existsBySlug(slug)) {
+            throw new SlugIndisponivelException("O link '" + slug + "' já está em uso.");
+        }
+
+        barbeiro.setSlug(slug);
+
+        return perfil(barbeiro, logado);
+    }
+
+    @Transactional(readOnly = true)
+    public BarbeiroPublicoResponse buscarPublico(String slug) {
+        Barbeiro barbeiro = barbeiroRepository.findBySlug(slug)
+                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Barbearia não encontrada."));
+
+        return new BarbeiroPublicoResponse(
+                barbeiro.getId(),
+                barbeiro.getNomeBarbearia(),
+                barbeiro.getHorarioFuncionamento()
+        );
+    }
+
+    private Barbeiro buscarBarbeiro(Usuario usuario) {
+        return barbeiroRepository.findByUsuario(usuario)
+                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Perfil de barbeiro não encontrado."));
+    }
+
+    private BarbeiroPerfilResponse perfil(Barbeiro barbeiro, Usuario usuario) {
         return new BarbeiroPerfilResponse(
                 barbeiro.getId(),
                 usuario.getNome(),
                 usuario.getEmail(),
+                barbeiro.getNomeBarbearia(),
+                barbeiro.getSlug(),
                 barbeiro.getHorarioFuncionamento()
         );
     }
@@ -117,17 +166,5 @@ public class BarbeiroService {
             base = base.substring(0, TAMANHO_MAXIMO_SLUG).replaceAll("-+$", "");
         }
         return base;
-    }
-
-    @Transactional(readOnly = true)
-    public BarbeiroPublicoResponse buscarPublico(String slug) {
-        Barbeiro barbeiro = barbeiroRepository.findBySlug(slug)
-                .orElseThrow(() -> new BarbeiroNaoEncontradoException("Barbearia não encontrada."));
-
-        return new BarbeiroPublicoResponse(
-                barbeiro.getId(),
-                barbeiro.getUsuario().getNome(),
-                barbeiro.getHorarioFuncionamento()
-        );
     }
 }
