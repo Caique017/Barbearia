@@ -190,6 +190,23 @@ com.barbearia.api
 Package-by-layer, decisão consciente. Package-by-feature só compensa em projeto
 maior — reavaliar quando o agendamento entrar.
 
+### O caminho de uma requisição autenticada
+
+```
+SecurityFilter        lê o Bearer, valida assinatura/issuer/validade,
+                      recarrega o usuário do banco e põe no SecurityContext
+                      (token ruim não dá erro aqui — só não autentica)
+SecurityConfig        rota pública? passa. Senão exige autenticado → 401
+@PreAuthorize         role errada para o controller → 403
+@Valid                corpo fora do formato → 400 com a lista de campos
+Service               regra de negócio, dentro de @Transactional
+GlobalExceptionHandler  qualquer exceção vira o envelope de erro padrão
+```
+
+Por isso um token inválido não derruba uma rota pública, e o 401/403 é escrito
+em dois lugares: o `SecurityErrorHandler` responde o que o Security barra antes
+do controller; o `GlobalExceptionHandler`, o que o `@PreAuthorize` barra dentro.
+
 ## Testes
 
 ```bash
@@ -204,8 +221,19 @@ maior — reavaliar quando o agendamento entrar.
   matriz de segurança (401/403 em toda rota protegida), os fluxos de perfil,
   slug, carteira e vínculo, e as migrations com linhas preexistentes
 
-O CI (`.github/workflows/ci.yml`) roda `./mvnw verify` em todo push para
-`master` e em todo pull request.
+Quem separa os dois grupos é o **nome da classe**: o Surefire roda os `*Test`
+na fase `test`, e o Failsafe roda os `*IT` na fase `integration-test`. Uma
+classe de teste com nome fora desse padrão não roda no Maven nem no CI.
+
+### CI
+
+O workflow (`.github/workflows/ci.yml`) roda em todo pull request e em todo push
+para `master`: máquina Ubuntu nova, Java 21 com cache do Maven e
+`./mvnw -B verify`. O runner do GitHub já tem Docker, então o Testcontainers sobe
+o Postgres sozinho — o workflow não declara banco nenhum.
+
+É integração contínua, sem deploy: a esteira compila e testa, mas não publica a
+aplicação.
 
 ## Roadmap
 
@@ -218,17 +246,22 @@ O CI (`.github/workflows/ci.yml`) roda `./mvnw verify` em todo push para
 - [x] Nome próprio da barbearia + `PATCH` do slug
 - [x] Extrair `AuthService`
 - [x] Testes automatizados
+- [x] CI com testes de integração em Postgres real
+- [ ] Integração da autenticação com o front (`barbearia-web`)
 - [ ] CRUD de serviços
 - [ ] Agendamento
+- [ ] Bloqueios e exceções de horário (feriado, folga, férias) — depende do agendamento
 - [ ] Movimento financeiro
-- [ ] CORS para o front
+- [ ] CORS para o deploy do front
 
 ## Limitações conhecidas
 
 Vale saber antes de usar isso como referência:
 
-- **CORS não está configurado** — o navegador vai barrar a primeira chamada de um
-  front em outra origem
+- **CORS não está configurado** — em desenvolvimento não faz falta, porque o
+  front (`barbearia-web`) usa o proxy do Vite e o navegador vê uma origem só. Em
+  produção, com front e API em domínios diferentes, o navegador vai barrar as
+  chamadas
 - **Credenciais do banco estão no `application.properties`** com valores de
   desenvolvimento. Dá para sobrescrever com `SPRING_DATASOURCE_URL`,
   `SPRING_DATASOURCE_USERNAME` e `SPRING_DATASOURCE_PASSWORD`
