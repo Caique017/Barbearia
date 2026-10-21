@@ -42,6 +42,7 @@ public class AgendamentoService {
     private final DisponibilidadeService disponibilidade;
     private final FinanceiroService financeiro;
     private final RelogioLocal relogio;
+    private final AssinaturaService assinaturaService;
 
     @Transactional
     public AgendamentoResponse agendarPeloBarbeiro(Usuario logado, AgendamentoBarbeiroRequest data) {
@@ -99,6 +100,7 @@ public class AgendamentoService {
     @Transactional
     public AgendamentoResponse agendarComoCliente(Usuario logado, AgendamentoClienteRequest data) {
         Cliente cliente = clienteDe(logado);
+        assinaturaService.exigirQueAceiteAgendamentos(cliente.getBarbeiro());
 
         return resposta(agendar(cliente.getBarbeiro(), cliente, data.servicoId(), data.dataHora(), true));
     }

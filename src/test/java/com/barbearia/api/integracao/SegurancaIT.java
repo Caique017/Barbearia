@@ -49,7 +49,10 @@ class SegurancaIT extends IntegracaoBase {
                 Arguments.of("GET", "/barbeiros/me/bloqueios", null),
                 Arguments.of("POST", "/barbeiros/me/bloqueios", "{\"inicio\":\"" + DATA_HORA + "\",\"fim\":\""
                         + DATA_HORA.replace("10:00", "11:00") + "\"}"),
-                Arguments.of("DELETE", "/barbeiros/me/bloqueios/" + ID, null));
+                Arguments.of("DELETE", "/barbeiros/me/bloqueios/" + ID, null),
+                Arguments.of("GET", "/assinatura", null),
+                Arguments.of("POST", "/assinatura/checkout", "{\"formaPagamento\":\"PIX\"}"),
+                Arguments.of("POST", "/assinatura/portal", null));
     }
 
     static Stream<Arguments> rotasDeCliente() {

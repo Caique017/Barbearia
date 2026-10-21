@@ -55,3 +55,15 @@ resource "aws_ssm_parameter" "mail_senha" {
 resource "aws_sesv2_email_identity" "remetente" {
   email_identity = var.email_remetente
 }
+
+resource "aws_ssm_parameter" "stripe" {
+  for_each = toset(["stripe-secret-key", "stripe-webhook-secret", "stripe-price-id"])
+
+  name  = "/${var.projeto}/${each.key}"
+  type  = "SecureString"
+  value = "PREENCHER-NO-PAINEL-DO-STRIPE"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}

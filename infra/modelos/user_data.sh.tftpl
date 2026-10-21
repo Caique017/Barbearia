@@ -39,6 +39,9 @@ MAIL_STARTTLS=true
 MAIL_USERNAME=$(param mail-username)
 MAIL_PASSWORD=$(param mail-password)
 MAIL_REMETENTE=$(param mail-remetente)
+STRIPE_SECRET_KEY=$(param stripe-secret-key)
+STRIPE_WEBHOOK_SECRET=$(param stripe-webhook-secret)
+STRIPE_PRICE_ID=$(param stripe-price-id)
 ENV
 
 aws ecr get-login-password --region "$REGIAO" | docker login --username AWS --password-stdin "$${IMAGEM%%/*}"

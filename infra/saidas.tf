@@ -24,6 +24,6 @@ output "github_web_variaveis" {
 }
 
 output "parametros_smtp" {
-  description = "Preencha estes dois com as credenciais SMTP geradas no console do SES."
-  value       = [aws_ssm_parameter.mail_usuario.name, aws_ssm_parameter.mail_senha.name]
+  description = "Preencha com as credenciais SMTP do SES e as chaves do Stripe."
+  value       = concat([aws_ssm_parameter.mail_usuario.name, aws_ssm_parameter.mail_senha.name], [for p in aws_ssm_parameter.stripe : p.name])
 }

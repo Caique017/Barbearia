@@ -58,6 +58,8 @@ class AgendamentoServiceTest {
     private FinanceiroService financeiro;
     @Mock
     private RelogioLocal relogio;
+    @Mock
+    private AssinaturaService assinaturaService;
 
     @InjectMocks
     private AgendamentoService service;
