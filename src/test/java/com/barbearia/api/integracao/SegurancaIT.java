@@ -44,7 +44,11 @@ class SegurancaIT extends IntegracaoBase {
                 Arguments.of("POST", "/agenda/" + ID + "/falta", null),
                 Arguments.of("POST", "/agenda/" + ID + "/cancelar", null),
                 Arguments.of("POST", "/agenda/" + ID + "/remarcar", "{\"dataHora\":\"" + DATA_HORA + "\"}"),
-                Arguments.of("GET", "/financeiro/resumo", null));
+                Arguments.of("GET", "/financeiro/resumo", null),
+                Arguments.of("GET", "/barbeiros/me/bloqueios", null),
+                Arguments.of("POST", "/barbeiros/me/bloqueios", "{\"inicio\":\"" + DATA_HORA + "\",\"fim\":\""
+                        + DATA_HORA.replace("10:00", "11:00") + "\"}"),
+                Arguments.of("DELETE", "/barbeiros/me/bloqueios/" + ID, null));
     }
 
     static Stream<Arguments> rotasDeCliente() {

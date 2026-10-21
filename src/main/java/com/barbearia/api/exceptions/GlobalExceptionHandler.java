@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({ClienteNaoEncontradoException.class, VinculoNaoEncontradoException.class,
             BarbeiroNaoEncontradoException.class, ServicoNaoEncontradoException.class,
-            AgendamentoNaoEncontradoException.class})
+            AgendamentoNaoEncontradoException.class, BloqueioNaoEncontradoException.class})
     public ResponseEntity<ErroResposta> tratarNaoEncontrado(RuntimeException ex, HttpServletRequest request) {
         return montar(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
