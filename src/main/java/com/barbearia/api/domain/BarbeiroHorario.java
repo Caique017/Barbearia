@@ -29,7 +29,7 @@ public class BarbeiroHorario {
     private Barbeiro barbeiro;
 
     @Convert(converter = DiaSemanaConverter.class)
-    @Column(name = "dia_semana", nullable = false, columnDefinition = "smallint")
+    @Column(name = "dia_semana", nullable = false)
     private DayOfWeek diaSemana;
 
     @Column(nullable = false)

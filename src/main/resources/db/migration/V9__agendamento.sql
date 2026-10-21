@@ -4,7 +4,7 @@ create table barbeiro_horario
 (
     id          uuid,
     barbeiro_id uuid     not null,
-    dia_semana  smallint not null,
+    dia_semana  integer  not null,
     abre        time     not null,
     fecha       time     not null,
     primary key (id),
