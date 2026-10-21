@@ -29,7 +29,11 @@ class SegurancaIT extends IntegracaoBase {
                 Arguments.of("GET", "/clientes/" + ID, null),
                 Arguments.of("PATCH", "/clientes/" + ID, "{}"),
                 Arguments.of("POST", "/clientes/" + ID + "/vinculo", null),
-                Arguments.of("DELETE", "/clientes/" + ID + "/vinculo", null));
+                Arguments.of("DELETE", "/clientes/" + ID + "/vinculo", null),
+                Arguments.of("GET", "/servicos", null),
+                Arguments.of("POST", "/servicos", "{\"nome\":\"X\",\"preco\":1,\"duracaoMinutos\":10}"),
+                Arguments.of("GET", "/servicos/" + ID, null),
+                Arguments.of("PATCH", "/servicos/" + ID, "{}"));
     }
 
     static Stream<Arguments> rotasProtegidas() {

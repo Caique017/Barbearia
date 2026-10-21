@@ -42,7 +42,7 @@ public class SecurityConfig {
                                 "/auth/barbeiro/registro", "/auth/barbeiro/login",
                                 "/auth/cliente/registro", "/auth/cliente/login",
                                 "/auth/senha/esqueci", "/auth/senha/redefinir").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/barbeiros/publico/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/barbeiros/publico/*", "/barbeiros/publico/*/servicos").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

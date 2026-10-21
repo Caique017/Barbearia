@@ -34,9 +34,8 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(SlugIndisponivelException.class)
-    public ResponseEntity<ErroResposta> tratarSlugIndisponivel(SlugIndisponivelException ex,
-                                                               HttpServletRequest request) {
+    @ExceptionHandler({SlugIndisponivelException.class, ServicoDuplicadoException.class})
+    public ResponseEntity<ErroResposta> tratarConflito(RuntimeException ex, HttpServletRequest request) {
         return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
@@ -49,7 +48,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({ClienteNaoEncontradoException.class, VinculoNaoEncontradoException.class,
-            BarbeiroNaoEncontradoException.class})
+            BarbeiroNaoEncontradoException.class, ServicoNaoEncontradoException.class})
     public ResponseEntity<ErroResposta> tratarNaoEncontrado(RuntimeException ex, HttpServletRequest request) {
         return montar(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
