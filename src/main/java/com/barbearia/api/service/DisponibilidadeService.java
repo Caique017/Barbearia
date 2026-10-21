@@ -9,6 +9,7 @@ import com.barbearia.api.exceptions.ServicoNaoEncontradoException;
 import com.barbearia.api.repositories.AgendamentoRepository;
 import com.barbearia.api.repositories.BarbeiroHorarioRepository;
 import com.barbearia.api.repositories.BarbeiroRepository;
+import com.barbearia.api.repositories.BloqueioHorarioRepository;
 import com.barbearia.api.repositories.ServicoRepository;
 import com.barbearia.api.service.CalculadoraDisponibilidade.Faixa;
 import com.barbearia.api.service.CalculadoraDisponibilidade.Intervalo;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 public class DisponibilidadeService {
@@ -32,6 +34,7 @@ public class DisponibilidadeService {
     private final ServicoRepository servicoRepository;
     private final BarbeiroHorarioRepository horarioRepository;
     private final AgendamentoRepository agendamentoRepository;
+    private final BloqueioHorarioRepository bloqueioRepository;
     private final RelogioLocal relogio;
     private final Duration passo;
     private final int diasDeAntecedencia;
@@ -40,6 +43,7 @@ public class DisponibilidadeService {
                                   ServicoRepository servicoRepository,
                                   BarbeiroHorarioRepository horarioRepository,
                                   AgendamentoRepository agendamentoRepository,
+                                  BloqueioHorarioRepository bloqueioRepository,
                                   RelogioLocal relogio,
                                   @Value("${api.agenda.passo-minutos:15}") int passoMinutos,
                                   @Value("${api.agenda.antecedencia-maxima-dias:60}") int diasDeAntecedencia) {
@@ -47,6 +51,7 @@ public class DisponibilidadeService {
         this.servicoRepository = servicoRepository;
         this.horarioRepository = horarioRepository;
         this.agendamentoRepository = agendamentoRepository;
+        this.bloqueioRepository = bloqueioRepository;
         this.relogio = relogio;
         this.passo = Duration.ofMinutes(passoMinutos);
         this.diasDeAntecedencia = diasDeAntecedencia;
@@ -107,10 +112,13 @@ public class DisponibilidadeService {
     }
 
     private List<Intervalo> ocupados(Barbeiro barbeiro, LocalDateTime de, LocalDateTime ate, UUID ignorar) {
-        return agendamentoRepository.sobrepostos(barbeiro.getId(), de, ate, AgendamentoRepository.OCUPAM_HORARIO)
-                .stream()
+        Stream<Intervalo> agendamentos = agendamentoRepository
+                .sobrepostos(barbeiro.getId(), de, ate, AgendamentoRepository.OCUPAM_HORARIO).stream()
                 .filter(agendamento -> !agendamento.getId().equals(ignorar))
-                .map(agendamento -> new Intervalo(agendamento.getDataHora(), agendamento.getTerminaEm()))
-                .toList();
+                .map(agendamento -> new Intervalo(agendamento.getDataHora(), agendamento.getTerminaEm()));
+        Stream<Intervalo> bloqueios = bloqueioRepository.sobrepostos(barbeiro.getId(), de, ate).stream()
+                .map(bloqueio -> new Intervalo(bloqueio.getInicio(), bloqueio.getFim()));
+
+        return Stream.concat(agendamentos, bloqueios).toList();
     }
 }

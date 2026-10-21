@@ -3,11 +3,14 @@ package com.barbearia.api.controller;
 import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.dto.agendamento.AgendamentoBarbeiroRequest;
 import com.barbearia.api.dto.agendamento.AgendamentoResponse;
+import com.barbearia.api.dto.agendamento.BloqueioRequest;
+import com.barbearia.api.dto.agendamento.BloqueioResponse;
 import com.barbearia.api.dto.agendamento.FaixaHorario;
 import com.barbearia.api.dto.agendamento.HorariosRequest;
 import com.barbearia.api.dto.agendamento.RemarcacaoRequest;
 import com.barbearia.api.dto.financeiro.ResumoFinanceiroResponse;
 import com.barbearia.api.service.AgendamentoService;
+import com.barbearia.api.service.BloqueioService;
 import com.barbearia.api.service.FinanceiroService;
 import com.barbearia.api.service.HorarioAtendimentoService;
 import jakarta.validation.Valid;
@@ -31,6 +34,7 @@ public class AgendaController {
     private final AgendamentoService agendamentoService;
     private final HorarioAtendimentoService horarioService;
     private final FinanceiroService financeiroService;
+    private final BloqueioService bloqueioService;
 
     @GetMapping("/barbeiros/me/horarios")
     public ResponseEntity<List<FaixaHorario>> horarios(@AuthenticationPrincipal Usuario usuario) {
@@ -41,6 +45,23 @@ public class AgendaController {
     public ResponseEntity<List<FaixaHorario>> definirHorarios(@AuthenticationPrincipal Usuario usuario,
                                                               @RequestBody @Valid HorariosRequest request) {
         return ResponseEntity.ok(horarioService.substituir(usuario, request));
+    }
+
+    @GetMapping("/barbeiros/me/bloqueios")
+    public ResponseEntity<List<BloqueioResponse>> bloqueios(@AuthenticationPrincipal Usuario usuario) {
+        return ResponseEntity.ok(bloqueioService.listarFuturos(usuario));
+    }
+
+    @PostMapping("/barbeiros/me/bloqueios")
+    public ResponseEntity<BloqueioResponse> bloquear(@AuthenticationPrincipal Usuario usuario,
+                                                     @RequestBody @Valid BloqueioRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(bloqueioService.criar(usuario, request));
+    }
+
+    @DeleteMapping("/barbeiros/me/bloqueios/{id}")
+    public ResponseEntity<Void> desbloquear(@AuthenticationPrincipal Usuario usuario, @PathVariable UUID id) {
+        bloqueioService.remover(usuario, id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/agenda")

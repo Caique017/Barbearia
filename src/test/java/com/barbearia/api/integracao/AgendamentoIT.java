@@ -226,6 +226,68 @@ class AgendamentoIT extends IntegracaoBase {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    private String bloquear(BarbeiroCriado barbeiro, LocalDateTime inicio, LocalDateTime fim) throws Exception {
+        return ler(chamar("POST", "/barbeiros/me/bloqueios", barbeiro.token(),
+                json("inicio", inicio.toString(), "fim", fim.toString(), "motivo", "Evento"))
+                .andExpect(status().isCreated())
+                .andReturn(), "$.id");
+    }
+
+    @Test
+    void diaInteiroBloqueadoFicaSemHorarioEOutrosDiasNao() throws Exception {
+        Cenario cenario = barbeariaAbertaDas6As22();
+        bloquear(cenario.barbeiro(), AMANHA.atStartOfDay(), AMANHA.plusDays(1).atStartOfDay());
+
+        chamar("GET", disponibilidade(cenario), null, null).andExpect(jsonPath("$.horarios", hasSize(0)));
+        chamar("GET", disponibilidade(cenario).replace("data=" + AMANHA, "data=" + AMANHA.plusDays(1)), null, null)
+                .andExpect(jsonPath("$.horarios", hasItem(startsWith("10:00"))));
+        chamar("POST", "/agendamentos", clienteDoLink(cenario.barbeiro()),
+                pedido(cenario.servicoId(), AMANHA.atTime(10, 0)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void faixaBloqueadaNoMeioDoDiaSoTiraAquelaFaixa() throws Exception {
+        Cenario cenario = barbeariaAbertaDas6As22();
+        bloquear(cenario.barbeiro(), AMANHA.atTime(14, 0), AMANHA.atTime(15, 0));
+
+        chamar("GET", disponibilidade(cenario), null, null)
+                .andExpect(jsonPath("$.horarios", not(hasItem(startsWith("14:00")))))
+                .andExpect(jsonPath("$.horarios", not(hasItem(startsWith("13:45")))))
+                .andExpect(jsonPath("$.horarios", hasItem(startsWith("13:30"))))
+                .andExpect(jsonPath("$.horarios", hasItem(startsWith("15:00"))));
+    }
+
+    @Test
+    void feriasDeVariosDiasERemoverDevolveOsHorarios() throws Exception {
+        Cenario cenario = barbeariaAbertaDas6As22();
+        String ferias = bloquear(cenario.barbeiro(), AMANHA.atStartOfDay(), AMANHA.plusDays(3).atStartOfDay());
+        String depoisDeAmanha = disponibilidade(cenario).replace("data=" + AMANHA, "data=" + AMANHA.plusDays(1));
+
+        chamar("GET", depoisDeAmanha, null, null).andExpect(jsonPath("$.horarios", hasSize(0)));
+        chamar("GET", "/barbeiros/me/bloqueios", cenario.barbeiro().token(), null)
+                .andExpect(jsonPath("$", hasSize(1)));
+
+        chamar("DELETE", "/barbeiros/me/bloqueios/" + ferias, registrarBarbeiro().token(), null)
+                .andExpect(status().isNotFound());
+        chamar("DELETE", "/barbeiros/me/bloqueios/" + ferias, cenario.barbeiro().token(), null)
+                .andExpect(status().isNoContent());
+
+        chamar("GET", depoisDeAmanha, null, null).andExpect(jsonPath("$.horarios", hasItem(startsWith("10:00"))));
+    }
+
+    @Test
+    void bloquearAvisaQueJaTemAgendamentoNoPeriodo() throws Exception {
+        Cenario cenario = barbeariaAbertaDas6As22();
+        chamar("POST", "/agendamentos", clienteDoLink(cenario.barbeiro()),
+                pedido(cenario.servicoId(), AMANHA.atTime(10, 0))).andExpect(status().isCreated());
+
+        chamar("POST", "/barbeiros/me/bloqueios", cenario.barbeiro().token(),
+                json("inicio", AMANHA.atStartOfDay().toString(), "fim", AMANHA.plusDays(1).atStartOfDay().toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.agendamentosNoPeriodo").value(1));
+    }
+
     @Test
     void horariosComFaixasSobrepostasDa400() throws Exception {
         BarbeiroCriado barbeiro = registrarBarbeiro();
