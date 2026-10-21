@@ -4,11 +4,11 @@ import com.barbearia.api.domain.Barbeiro;
 import com.barbearia.api.domain.Cliente;
 import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.dto.cliente.ClienteAtualizacaoRequest;
+import com.barbearia.api.dto.cliente.ClienteRapidoRequest;
 import com.barbearia.api.dto.cliente.ClienteResumoResponse;
 import com.barbearia.api.exceptions.ClienteNaoEncontradoException;
 import com.barbearia.api.exceptions.UsuarioExistenteException;
 import com.barbearia.api.exceptions.VinculoNaoEncontradoException;
-import com.barbearia.api.repositories.BarbeiroRepository;
 import com.barbearia.api.repositories.ClienteRepository;
 import com.barbearia.api.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +34,7 @@ class ClienteServiceTest {
     @Mock
     private ClienteRepository clienteRepository;
     @Mock
-    private BarbeiroRepository barbeiroRepository;
+    private BarbeiroLogado barbeiroLogado;
     @Mock
     private UsuarioRepository usuarioRepository;
 
@@ -49,11 +49,21 @@ class ClienteServiceTest {
     void carteiraComUmCliente() {
         barbeiro = Barbeiro.builder().id(UUID.randomUUID()).build();
         cliente = Cliente.builder().id(UUID.randomUUID()).barbeiro(barbeiro).nome("Carlos").telefone("11999998888").build();
-        when(barbeiroRepository.findByUsuario(logado)).thenReturn(Optional.of(barbeiro));
+        when(barbeiroLogado.de(logado)).thenReturn(barbeiro);
     }
 
     private void clienteEncontrado() {
         when(clienteRepository.findByIdAndBarbeiroId(cliente.getId(), barbeiro.getId())).thenReturn(Optional.of(cliente));
+    }
+
+    @Test
+    void cadastrarComTelefoneJaNaCarteiraDa409SemSalvar() {
+        when(clienteRepository.existsByTelefoneAndBarbeiroId("11999998888", barbeiro.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> clienteService.cadastrarPeloBarbeiro(logado,
+                new ClienteRapidoRequest("Outro Carlos", "11999998888")))
+                .isInstanceOf(UsuarioExistenteException.class);
+        verify(clienteRepository, never()).save(any());
     }
 
     @Test

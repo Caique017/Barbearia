@@ -3,6 +3,10 @@ package com.barbearia.api.service;
 import com.barbearia.api.domain.Barbeiro;
 import com.barbearia.api.domain.Cliente;
 import com.barbearia.api.domain.Usuario;
+import com.barbearia.api.dto.barbeiro.BarbeiroCadastroRequest;
+import com.barbearia.api.dto.barbeiro.BarbeiroCadastroResponse;
+import com.barbearia.api.dto.barbeiro.BarbeiroLoginRequest;
+import com.barbearia.api.dto.barbeiro.BarbeiroLoginResponse;
 import com.barbearia.api.dto.cliente.ClienteCadastroRequest;
 import com.barbearia.api.dto.cliente.ClienteCadastroResponse;
 import com.barbearia.api.dto.cliente.ClienteLoginRequest;
@@ -37,6 +41,32 @@ public class AuthService {
     private final TokenService tokenService;
     private final LimiteTentativasLogin limiteTentativas;
     private final EventosSeguranca eventos;
+    private final GeradorSlug geradorSlug;
+
+    @Transactional
+    public BarbeiroCadastroResponse cadastroBarbeiro(BarbeiroCadastroRequest data) {
+        garantirEmailLivre(data.email());
+
+        Usuario usuario = criarUsuario(data.nome(), data.email(), data.senha(), Role.BARBEIRO);
+
+        Barbeiro barbeiro = Barbeiro.builder()
+                .usuario(usuario)
+                .nomeBarbearia(data.nomeBarbearia())
+                .horarioFuncionamento(data.horarioFuncionamento())
+                .slug(geradorSlug.gerar(data.nomeBarbearia()))
+                .build();
+        barbeiroRepository.save(barbeiro);
+
+        return new BarbeiroCadastroResponse(tokenService.gerarToken(usuario), usuario.getNome(), usuario.getEmail(),
+                barbeiro.getSlug());
+    }
+
+    @Transactional(readOnly = true)
+    public BarbeiroLoginResponse loginBarbeiro(BarbeiroLoginRequest data) {
+        Usuario usuario = login(data.email(), data.senha(), Role.BARBEIRO);
+
+        return new BarbeiroLoginResponse(tokenService.gerarToken(usuario), usuario.getNome(), usuario.getEmail());
+    }
 
     @Transactional(readOnly = true)
     public Usuario login(String email, String senha, Role rolePermitida) {
@@ -72,9 +102,7 @@ public class AuthService {
 
     @Transactional
     public ClienteCadastroResponse cadastroCliente(ClienteCadastroRequest data) {
-        if (usuarioRepository.findByEmail(data.email()).isPresent()) {
-            throw new UsuarioExistenteException("O e-mail " + data.email() + " já está em uso.");
-        }
+        garantirEmailLivre(data.email());
 
         Barbeiro barbeiro = barbeiroRepository.findById(data.barbeiroId())
                 .orElseThrow(() -> new BarbeiroNaoEncontradoException("Barbeiro não encontrado."));
@@ -92,13 +120,7 @@ public class AuthService {
                     "Já existe um pedido de vínculo para esse telefone aguardando o barbeiro.");
         }
 
-        Usuario usuario = Usuario.builder()
-                .nome(data.nome())
-                .email(data.email())
-                .senha(passwordEncoder.encode(data.senha()))
-                .role(Role.CLIENTE)
-                .build();
-        usuarioRepository.save(usuario);
+        Usuario usuario = criarUsuario(data.nome(), data.email(), data.senha(), Role.CLIENTE);
 
         boolean vinculoPendente = existente != null;
         if (vinculoPendente) {
@@ -121,7 +143,23 @@ public class AuthService {
     public ClienteLoginResponse loginCliente(ClienteLoginRequest data) {
         Usuario usuario = login(data.email(), data.senha(), Role.CLIENTE);
 
-        String token = tokenService.gerarToken(usuario);
-        return new ClienteLoginResponse(usuario.getNome(), usuario.getEmail(), token);
+        return new ClienteLoginResponse(tokenService.gerarToken(usuario), usuario.getNome(), usuario.getEmail());
+    }
+
+    private void garantirEmailLivre(String email) {
+        if (usuarioRepository.findByEmail(email).isPresent()) {
+            throw new UsuarioExistenteException("O e-mail " + email + " já está em uso.");
+        }
+    }
+
+    private Usuario criarUsuario(String nome, String email, String senha, Role role) {
+        Usuario usuario = Usuario.builder()
+                .nome(nome)
+                .email(email)
+                .senha(passwordEncoder.encode(senha))
+                .role(role)
+                .build();
+        usuarioRepository.save(usuario);
+        return usuario;
     }
 }
