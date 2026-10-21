@@ -3,6 +3,8 @@ package com.barbearia.api.service;
 import com.barbearia.api.domain.Barbeiro;
 import com.barbearia.api.domain.Cliente;
 import com.barbearia.api.domain.Usuario;
+import com.barbearia.api.dto.barbeiro.BarbeiroCadastroRequest;
+import com.barbearia.api.dto.barbeiro.BarbeiroCadastroResponse;
 import com.barbearia.api.dto.cliente.ClienteCadastroRequest;
 import com.barbearia.api.dto.cliente.ClienteCadastroResponse;
 import com.barbearia.api.enums.Role;
@@ -57,6 +59,8 @@ class AuthServiceTest {
     private LimiteTentativasLogin limiteTentativas;
     @Mock
     private EventosSeguranca eventos;
+    @Mock
+    private GeradorSlug geradorSlug;
 
     @InjectMocks
     private AuthService authService;
@@ -131,6 +135,34 @@ class AuthServiceTest {
                 .isInstanceOf(TentativasExcedidasException.class);
         verify(usuarioRepository, never()).findByEmail(any());
         verify(eventos).loginBloqueado(EMAIL);
+    }
+
+    @Test
+    void cadastroDeBarbeiroUsaOSlugGeradoDoNomeDaBarbearia() {
+        when(geradorSlug.gerar("Barbearia Nova")).thenReturn("barbearia-nova");
+        when(passwordEncoder.encode("senha123")).thenReturn("hash");
+
+        BarbeiroCadastroResponse response = authService.cadastroBarbeiro(
+                new BarbeiroCadastroRequest("Pessoa", "Barbearia Nova", null, EMAIL, "senha123"));
+
+        ArgumentCaptor<Barbeiro> salvo = ArgumentCaptor.forClass(Barbeiro.class);
+        verify(barbeiroRepository).save(salvo.capture());
+        assertThat(response.slug()).isEqualTo("barbearia-nova");
+        assertThat(salvo.getValue().getNomeBarbearia()).isEqualTo("Barbearia Nova");
+        assertThat(salvo.getValue().getUsuario().getRole()).isEqualTo(Role.BARBEIRO);
+        assertThat(salvo.getValue().getUsuario().getSenha()).isEqualTo("hash");
+    }
+
+    @Test
+    void cadastroDeBarbeiroComEmailExistenteDa409SemSalvarNada() {
+        when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(new Usuario()));
+
+        assertThatThrownBy(() -> authService.cadastroBarbeiro(
+                new BarbeiroCadastroRequest("Pessoa", "Barbearia", null, EMAIL, "senha123")))
+                .isInstanceOf(UsuarioExistenteException.class);
+
+        verify(usuarioRepository, never()).save(any());
+        verify(barbeiroRepository, never()).save(any());
     }
 
     @Test

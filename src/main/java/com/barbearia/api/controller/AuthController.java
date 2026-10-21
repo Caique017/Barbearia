@@ -11,7 +11,6 @@ import com.barbearia.api.dto.cliente.ClienteLoginRequest;
 import com.barbearia.api.dto.cliente.ClienteLoginResponse;
 import com.barbearia.api.dto.usuario.UsuarioLogadoResponse;
 import com.barbearia.api.service.AuthService;
-import com.barbearia.api.service.BarbeiroService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,18 +27,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final BarbeiroService barbeiroService;
     private final AuthService authService;
 
     @PostMapping("/barbeiro/registro")
     public ResponseEntity<BarbeiroCadastroResponse> registrar(@RequestBody @Valid BarbeiroCadastroRequest request) {
-        BarbeiroCadastroResponse response = barbeiroService.registroBarbeiro(request);
+        BarbeiroCadastroResponse response = authService.cadastroBarbeiro(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/barbeiro/login")
     public ResponseEntity<BarbeiroLoginResponse> login(@RequestBody @Valid BarbeiroLoginRequest request) {
-        BarbeiroLoginResponse response = barbeiroService.loginBarbeiro(request);
+        BarbeiroLoginResponse response = authService.loginBarbeiro(request);
         return ResponseEntity.ok(response);
     }
 

@@ -26,6 +26,17 @@ class ClienteIT extends IntegracaoBase {
     }
 
     @Test
+    void cadastroRapidoAceitaTelefoneFormatado() throws Exception {
+        BarbeiroCriado barbeiro = registrarBarbeiro();
+        String telefone = telefoneUnico();
+        String comMascara = "(" + telefone.substring(0, 2) + ") " + telefone.substring(2, 7) + "-" + telefone.substring(7);
+
+        chamar("POST", "/clientes", barbeiro.token(), json("nome", "Carlos", "telefone", comMascara))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.telefone").value(telefone));
+    }
+
+    @Test
     void telefoneEUnicoPorBarbeiroENaoGlobal() throws Exception {
         BarbeiroCriado a = registrarBarbeiro();
         BarbeiroCriado b = registrarBarbeiro();
