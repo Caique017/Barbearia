@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SegurancaIT extends IntegracaoBase {
 
     private static final String ID = UUID.randomUUID().toString();
+    private static final String DATA_HORA = "2030-01-07T10:00:00";
 
     static Stream<Arguments> rotasDeBarbeiro() {
         return Stream.of(
@@ -33,13 +34,38 @@ class SegurancaIT extends IntegracaoBase {
                 Arguments.of("GET", "/servicos", null),
                 Arguments.of("POST", "/servicos", "{\"nome\":\"X\",\"preco\":1,\"duracaoMinutos\":10}"),
                 Arguments.of("GET", "/servicos/" + ID, null),
-                Arguments.of("PATCH", "/servicos/" + ID, "{}"));
+                Arguments.of("PATCH", "/servicos/" + ID, "{}"),
+                Arguments.of("GET", "/barbeiros/me/horarios", null),
+                Arguments.of("PUT", "/barbeiros/me/horarios", "{\"faixas\":[]}"),
+                Arguments.of("GET", "/agenda", null),
+                Arguments.of("POST", "/agenda", "{\"clienteId\":\"" + ID + "\",\"servicoId\":\"" + ID
+                        + "\",\"dataHora\":\"" + DATA_HORA + "\"}"),
+                Arguments.of("POST", "/agenda/" + ID + "/concluir", null),
+                Arguments.of("POST", "/agenda/" + ID + "/falta", null),
+                Arguments.of("POST", "/agenda/" + ID + "/cancelar", null),
+                Arguments.of("POST", "/agenda/" + ID + "/remarcar", "{\"dataHora\":\"" + DATA_HORA + "\"}"),
+                Arguments.of("GET", "/financeiro/resumo", null));
+    }
+
+    static Stream<Arguments> rotasDeCliente() {
+        return Stream.of(
+                Arguments.of("GET", "/agendamentos", null),
+                Arguments.of("POST", "/agendamentos", "{\"servicoId\":\"" + ID + "\",\"dataHora\":\"" + DATA_HORA + "\"}"),
+                Arguments.of("POST", "/agendamentos/" + ID + "/cancelar", null),
+                Arguments.of("POST", "/agendamentos/" + ID + "/remarcar", "{\"dataHora\":\"" + DATA_HORA + "\"}"));
     }
 
     static Stream<Arguments> rotasProtegidas() {
-        return Stream.concat(Stream.of(
-                Arguments.of("GET", "/auth/me", null),
-                Arguments.of("POST", "/auth/sair", null)), rotasDeBarbeiro());
+        return Stream.of(
+                Stream.of(Arguments.of("GET", "/auth/me", null), Arguments.of("POST", "/auth/sair", null)),
+                rotasDeBarbeiro(),
+                rotasDeCliente()).flatMap(rotas -> rotas);
+    }
+
+    @ParameterizedTest(name = "{0} {1} com token de BARBEIRO -> 403")
+    @MethodSource("rotasDeCliente")
+    void tokenDeBarbeiroEmRotaDeClienteDa403(String metodo, String caminho, String corpo) throws Exception {
+        chamar(metodo, caminho, registrarBarbeiro().token(), corpo).andExpect(status().isForbidden());
     }
 
     @ParameterizedTest(name = "{0} {1} sem token -> 401")

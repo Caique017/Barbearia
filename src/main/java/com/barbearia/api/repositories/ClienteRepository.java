@@ -16,4 +16,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
     List<Cliente> findByBarbeiroIdOrderByNomeAsc(UUID barbeiroId);
 
     Optional<Cliente> findByIdAndBarbeiroId(UUID id, UUID barbeiroId);
+
+    Optional<Cliente> findByUsuarioId(UUID usuarioId);
 }

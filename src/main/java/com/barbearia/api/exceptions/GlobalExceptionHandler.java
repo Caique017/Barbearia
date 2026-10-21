@@ -34,9 +34,17 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
-    @ExceptionHandler({SlugIndisponivelException.class, ServicoDuplicadoException.class})
+    @ExceptionHandler({SlugIndisponivelException.class, ServicoDuplicadoException.class,
+            HorarioIndisponivelException.class, TransicaoAgendamentoInvalidaException.class,
+            ClienteSemVinculoException.class})
     public ResponseEntity<ErroResposta> tratarConflito(RuntimeException ex, HttpServletRequest request) {
         return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(HorarioInvalidoException.class)
+    public ResponseEntity<ErroResposta> tratarHorarioInvalido(HorarioInvalidoException ex,
+                                                              HttpServletRequest request) {
+        return montar(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -48,7 +56,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({ClienteNaoEncontradoException.class, VinculoNaoEncontradoException.class,
-            BarbeiroNaoEncontradoException.class, ServicoNaoEncontradoException.class})
+            BarbeiroNaoEncontradoException.class, ServicoNaoEncontradoException.class,
+            AgendamentoNaoEncontradoException.class})
     public ResponseEntity<ErroResposta> tratarNaoEncontrado(RuntimeException ex, HttpServletRequest request) {
         return montar(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
