@@ -1,0 +1,8 @@
+target/
+.git/
+.github/
+.idea/
+.claude/
+infra/
+*.md
+insomnia-reqs*
