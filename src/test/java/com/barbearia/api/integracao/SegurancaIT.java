@@ -98,7 +98,7 @@ class SegurancaIT extends IntegracaoBase {
 
     @Test
     void metodoErradoDa405EnaoErroInterno() throws Exception {
-        chamar("PUT", "/auth/cliente/login", null, "{}").andExpect(status().isMethodNotAllowed());
+        chamar("PUT", "/auth/me", tokenDeCliente(), "{}").andExpect(status().isMethodNotAllowed());
     }
 
     @Test
