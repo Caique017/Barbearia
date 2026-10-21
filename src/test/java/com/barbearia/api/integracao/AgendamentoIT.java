@@ -207,7 +207,24 @@ class AgendamentoIT extends IntegracaoBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.atendimentos").value(1))
                 .andExpect(jsonPath("$.faturamento").value(40.0))
-                .andExpect(jsonPath("$.lucro").value(35.0));
+                .andExpect(jsonPath("$.lucro").value(35.0))
+                .andExpect(jsonPath("$.servicos[0].nome").value("Corte"))
+                .andExpect(jsonPath("$.servicos[0].atendimentos").value(1));
+
+        chamar("GET", "/agenda/" + passado.getId(), cenario.barbeiro().token(), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONCLUIDO"));
+        chamar("GET", "/agenda/" + passado.getId(), registrarBarbeiro().token(), null)
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void clienteDescobreAPropriaBarbearia() throws Exception {
+        Cenario cenario = barbeariaAbertaDas6As22();
+
+        chamar("GET", "/agendamentos/minha-barbearia", clienteDoLink(cenario.barbeiro()), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value(cenario.barbeiro().slug()));
     }
 
     @Test

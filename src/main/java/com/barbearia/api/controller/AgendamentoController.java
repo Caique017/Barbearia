@@ -4,6 +4,7 @@ import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.dto.agendamento.AgendamentoClienteRequest;
 import com.barbearia.api.dto.agendamento.AgendamentoResponse;
 import com.barbearia.api.dto.agendamento.DisponibilidadeResponse;
+import com.barbearia.api.dto.agendamento.MinhaBarbeariaResponse;
 import com.barbearia.api.dto.agendamento.RemarcacaoRequest;
 import com.barbearia.api.service.AgendamentoService;
 import com.barbearia.api.service.DisponibilidadeService;
@@ -35,6 +36,11 @@ public class AgendamentoController {
             @RequestParam UUID servicoId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
         return ResponseEntity.ok(disponibilidadeService.doDia(slug, servicoId, data));
+    }
+
+    @GetMapping("/agendamentos/minha-barbearia")
+    public ResponseEntity<MinhaBarbeariaResponse> minhaBarbearia(@AuthenticationPrincipal Usuario usuario) {
+        return ResponseEntity.ok(agendamentoService.minhaBarbearia(usuario));
     }
 
     @GetMapping("/agendamentos")
