@@ -1,0 +1,69 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf install -y docker jq
+systemctl enable --now docker
+
+install -d -m 700 /opt/barbearia
+cat > /opt/barbearia/deploy.sh <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+VERSAO="$${1:-latest}"
+REGIAO="${regiao}"
+IMAGEM="${imagem}"
+ENV_FILE=/opt/barbearia/api.env
+
+param() {
+  aws ssm get-parameter --region "$REGIAO" --with-decryption --name "/${projeto}/$1" \
+    --query Parameter.Value --output text
+}
+
+BANCO=$(aws secretsmanager get-secret-value --region "$REGIAO" --secret-id "${segredo_banco}" \
+  --query SecretString --output text)
+
+umask 077
+cat > "$ENV_FILE" <<ENV
+SERVER_SERVLET_CONTEXT_PATH=/api
+DB_URL=jdbc:postgresql://${endereco_banco}/barbearia?sslmode=require
+DB_USERNAME=$(echo "$BANCO" | jq -r .username)
+DB_PASSWORD=$(echo "$BANCO" | jq -r .password)
+API_SECURITY_TOKEN_SECRET=$(param api-security-token-secret)
+ORIGEM_SEGREDO=$(param origem-segredo)
+FRONT_URL=$(param front-url)
+PROXY_CONFIAVEL=true
+MAIL_HOST=email-smtp.${regiao}.amazonaws.com
+MAIL_PORT=587
+MAIL_SMTP_AUTH=true
+MAIL_STARTTLS=true
+MAIL_USERNAME=$(param mail-username)
+MAIL_PASSWORD=$(param mail-password)
+MAIL_REMETENTE=$(param mail-remetente)
+ENV
+
+aws ecr get-login-password --region "$REGIAO" | docker login --username AWS --password-stdin "$${IMAGEM%%/*}"
+docker pull "$IMAGEM:$VERSAO"
+
+docker rm -f barbearia-api 2>/dev/null || true
+docker run -d --name barbearia-api --restart unless-stopped \
+  -p 8080:8080 \
+  --env-file "$ENV_FILE" \
+  --log-driver awslogs \
+  --log-opt awslogs-region="$REGIAO" \
+  --log-opt awslogs-group="${grupo_logs}" \
+  "$IMAGEM:$VERSAO"
+
+for _ in $(seq 1 36); do
+  if curl -fsS http://localhost:8080/api/actuator/health > /dev/null; then
+    echo "API no ar na versao $VERSAO"
+    docker image prune -af --filter "until=168h" > /dev/null || true
+    exit 0
+  fi
+  sleep 5
+done
+
+echo "API nao respondeu ao health check"
+docker logs --tail 200 barbearia-api || true
+exit 1
+SCRIPT
+chmod 700 /opt/barbearia/deploy.sh

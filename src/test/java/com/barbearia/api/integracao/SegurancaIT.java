@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -128,6 +129,23 @@ class SegurancaIT extends IntegracaoBase {
                 .andExpect(header().string("Referrer-Policy", "no-referrer"))
                 .andExpect(header().string("X-Content-Type-Options", "nosniff"))
                 .andExpect(header().string("X-Frame-Options", "DENY"));
+    }
+
+    @Test
+    void healthCheckEPublicoESemDetalhes() throws Exception {
+        chamar("GET", "/actuator/health", null, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.components").doesNotExist());
+    }
+
+    @Test
+    void preflightDeOutroSiteERecusado() throws Exception {
+        mvc.perform(options("/auth/cliente/login")
+                        .header("Origin", "https://site-malicioso.example")
+                        .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 
     @Test
