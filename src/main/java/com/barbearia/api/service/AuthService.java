@@ -42,6 +42,7 @@ public class AuthService {
     private final LimiteTentativasLogin limiteTentativas;
     private final EventosSeguranca eventos;
     private final GeradorSlug geradorSlug;
+    private final AssinaturaService assinaturaService;
 
     @Transactional
     public BarbeiroCadastroResponse cadastroBarbeiro(BarbeiroCadastroRequest data) {
@@ -56,6 +57,7 @@ public class AuthService {
                 .slug(geradorSlug.gerar(data.nomeBarbearia()))
                 .build();
         barbeiroRepository.save(barbeiro);
+        assinaturaService.iniciarTeste(barbeiro);
 
         return new BarbeiroCadastroResponse(tokenService.gerarToken(usuario), usuario.getNome(), usuario.getEmail(),
                 barbeiro.getSlug());

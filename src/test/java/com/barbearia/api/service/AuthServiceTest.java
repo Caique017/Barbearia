@@ -61,6 +61,8 @@ class AuthServiceTest {
     private EventosSeguranca eventos;
     @Mock
     private GeradorSlug geradorSlug;
+    @Mock
+    private AssinaturaService assinaturaService;
 
     @InjectMocks
     private AuthService authService;
@@ -151,6 +153,7 @@ class AuthServiceTest {
         assertThat(salvo.getValue().getNomeBarbearia()).isEqualTo("Barbearia Nova");
         assertThat(salvo.getValue().getUsuario().getRole()).isEqualTo(Role.BARBEIRO);
         assertThat(salvo.getValue().getUsuario().getSenha()).isEqualTo("hash");
+        verify(assinaturaService).iniciarTeste(salvo.getValue());
     }
 
     @Test

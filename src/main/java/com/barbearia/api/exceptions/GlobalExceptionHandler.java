@@ -41,6 +41,25 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(AssinaturaInativaException.class)
+    public ResponseEntity<ErroResposta> tratarAssinaturaInativa(AssinaturaInativaException ex,
+                                                                HttpServletRequest request) {
+        return montar(HttpStatus.PAYMENT_REQUIRED, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(PagamentoIndisponivelException.class)
+    public ResponseEntity<ErroResposta> tratarPagamentoIndisponivel(PagamentoIndisponivelException ex,
+                                                                    HttpServletRequest request) {
+        return montar(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(WebhookInvalidoException.class)
+    public ResponseEntity<ErroResposta> tratarWebhookInvalido(WebhookInvalidoException ex,
+                                                              HttpServletRequest request) {
+        log.warn("Webhook de pagamento recusado: {}", ex.getMessage());
+        return montar(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(HorarioInvalidoException.class)
     public ResponseEntity<ErroResposta> tratarHorarioInvalido(HorarioInvalidoException ex,
                                                               HttpServletRequest request) {
