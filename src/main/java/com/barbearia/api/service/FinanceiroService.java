@@ -56,7 +56,8 @@ public class FinanceiroService {
                 somar(dias, ResumoDia::faturamento),
                 somar(dias, ResumoDia::custos),
                 somar(dias, ResumoDia::lucro),
-                dias);
+                dias,
+                movimentoRepository.resumoPorServico(barbeiro.getId(), inicio, fim));
     }
 
     private static BigDecimal somar(List<ResumoDia> dias, Function<ResumoDia, BigDecimal> campo) {

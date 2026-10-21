@@ -8,6 +8,7 @@ import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.dto.agendamento.AgendamentoBarbeiroRequest;
 import com.barbearia.api.dto.agendamento.AgendamentoClienteRequest;
 import com.barbearia.api.dto.agendamento.AgendamentoResponse;
+import com.barbearia.api.dto.agendamento.MinhaBarbeariaResponse;
 import com.barbearia.api.exceptions.AgendamentoNaoEncontradoException;
 import com.barbearia.api.exceptions.ClienteNaoEncontradoException;
 import com.barbearia.api.exceptions.ClienteSemVinculoException;
@@ -70,6 +71,11 @@ public class AgendamentoService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public AgendamentoResponse detalhe(Usuario logado, UUID id) {
+        return resposta(doBarbeiro(logado, id));
+    }
+
     @Transactional
     public AgendamentoResponse concluir(Usuario logado, UUID id) {
         Agendamento agendamento = doBarbeiro(logado, id);
@@ -103,6 +109,13 @@ public class AgendamentoService {
         assinaturaService.exigirQueAceiteAgendamentos(cliente.getBarbeiro());
 
         return resposta(agendar(cliente.getBarbeiro(), cliente, data.servicoId(), data.dataHora(), true));
+    }
+
+    @Transactional(readOnly = true)
+    public MinhaBarbeariaResponse minhaBarbearia(Usuario logado) {
+        Barbeiro barbeiro = clienteDe(logado).getBarbeiro();
+        return new MinhaBarbeariaResponse(barbeiro.getSlug(), barbeiro.getNomeBarbearia(),
+                barbeiro.getHorarioFuncionamento());
     }
 
     @Transactional(readOnly = true)

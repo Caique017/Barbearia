@@ -2,6 +2,7 @@ package com.barbearia.api.repositories;
 
 import com.barbearia.api.domain.MovimentoFinanceiro;
 import com.barbearia.api.dto.financeiro.ResumoDia;
+import com.barbearia.api.dto.financeiro.ResumoServico;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -22,4 +23,14 @@ public interface MovimentoFinanceiroRepository extends JpaRepository<MovimentoFi
             order by m.data
             """)
     List<ResumoDia> resumoPorDia(UUID barbeiroId, LocalDate de, LocalDate ate);
+
+    @Query("""
+            select new com.barbearia.api.dto.financeiro.ResumoServico(
+                m.agendamento.servico.nome, count(m), sum(m.valorBruto))
+            from MovimentoFinanceiro m
+            where m.agendamento.barbeiro.id = :barbeiroId and m.data between :de and :ate
+            group by m.agendamento.servico.nome
+            order by count(m) desc, m.agendamento.servico.nome
+            """)
+    List<ResumoServico> resumoPorServico(UUID barbeiroId, LocalDate de, LocalDate ate);
 }

@@ -39,6 +39,7 @@ class SegurancaIT extends IntegracaoBase {
                 Arguments.of("GET", "/barbeiros/me/horarios", null),
                 Arguments.of("PUT", "/barbeiros/me/horarios", "{\"faixas\":[]}"),
                 Arguments.of("GET", "/agenda", null),
+                Arguments.of("GET", "/agenda/" + ID, null),
                 Arguments.of("POST", "/agenda", "{\"clienteId\":\"" + ID + "\",\"servicoId\":\"" + ID
                         + "\",\"dataHora\":\"" + DATA_HORA + "\"}"),
                 Arguments.of("POST", "/agenda/" + ID + "/concluir", null),
@@ -58,6 +59,7 @@ class SegurancaIT extends IntegracaoBase {
     static Stream<Arguments> rotasDeCliente() {
         return Stream.of(
                 Arguments.of("GET", "/agendamentos", null),
+                Arguments.of("GET", "/agendamentos/minha-barbearia", null),
                 Arguments.of("POST", "/agendamentos", "{\"servicoId\":\"" + ID + "\",\"dataHora\":\"" + DATA_HORA + "\"}"),
                 Arguments.of("POST", "/agendamentos/" + ID + "/cancelar", null),
                 Arguments.of("POST", "/agendamentos/" + ID + "/remarcar", "{\"dataHora\":\"" + DATA_HORA + "\"}"));

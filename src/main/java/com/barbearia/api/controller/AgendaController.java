@@ -78,6 +78,11 @@ public class AgendaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(agendamentoService.agendarPeloBarbeiro(usuario, request));
     }
 
+    @GetMapping("/agenda/{id}")
+    public ResponseEntity<AgendamentoResponse> detalhe(@AuthenticationPrincipal Usuario usuario, @PathVariable UUID id) {
+        return ResponseEntity.ok(agendamentoService.detalhe(usuario, id));
+    }
+
     @PostMapping("/agenda/{id}/concluir")
     public ResponseEntity<AgendamentoResponse> concluir(@AuthenticationPrincipal Usuario usuario,
                                                         @PathVariable UUID id) {

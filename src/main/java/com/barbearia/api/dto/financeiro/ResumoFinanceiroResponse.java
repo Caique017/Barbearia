@@ -11,6 +11,7 @@ public record ResumoFinanceiroResponse(
         BigDecimal faturamento,
         BigDecimal custos,
         BigDecimal lucro,
-        List<ResumoDia> dias
+        List<ResumoDia> dias,
+        List<ResumoServico> servicos
 ) {
 }

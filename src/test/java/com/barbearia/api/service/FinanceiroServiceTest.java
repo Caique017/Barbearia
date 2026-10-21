@@ -8,6 +8,7 @@ import com.barbearia.api.domain.Servico;
 import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.dto.financeiro.ResumoDia;
 import com.barbearia.api.dto.financeiro.ResumoFinanceiroResponse;
+import com.barbearia.api.dto.financeiro.ResumoServico;
 import com.barbearia.api.repositories.MovimentoFinanceiroRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -92,5 +93,22 @@ class FinanceiroServiceTest {
         assertThat(resumo.faturamento()).isEqualByComparingTo("120.00");
         assertThat(resumo.lucro()).isEqualByComparingTo("110.00");
         assertThat(resumo.dias()).hasSize(2);
+        assertThat(resumo.servicos()).isEmpty();
+    }
+
+    @Test
+    void resumoTrazOMixDeServicosDoPeriodo() {
+        Usuario logado = new Usuario();
+        Barbeiro barbeiro = Barbeiro.builder().id(UUID.randomUUID()).build();
+        LocalDate dia = LocalDate.of(2026, 10, 5);
+        when(barbeiroLogado.de(logado)).thenReturn(barbeiro);
+        when(relogio.agora()).thenReturn(LocalDateTime.of(2026, 10, 20, 12, 0));
+        when(movimentoRepository.resumoPorServico(barbeiro.getId(), dia, dia)).thenReturn(List.of(
+                new ResumoServico("Combo", 3L, new BigDecimal("195.00")),
+                new ResumoServico("Corte", 1L, new BigDecimal("45.00"))));
+
+        ResumoFinanceiroResponse resumo = service.resumo(logado, dia, dia);
+
+        assertThat(resumo.servicos()).extracting(ResumoServico::nome).containsExactly("Combo", "Corte");
     }
 }
