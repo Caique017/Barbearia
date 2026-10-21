@@ -1,11 +1,11 @@
 package com.barbearia.api.integracao;
 
-import com.barbearia.api.domain.TokenRedefinicaoSenha;
-import com.barbearia.api.domain.Usuario;
-import com.barbearia.api.repositories.TokenRedefinicaoSenhaRepository;
-import com.barbearia.api.repositories.UsuarioRepository;
-import com.barbearia.api.security.TokenAleatorio;
-import com.barbearia.api.service.LimpezaTokensRedefinicao;
+import com.barbearia.api.auth.LimpezaTokensRedefinicao;
+import com.barbearia.api.auth.TokenAleatorio;
+import com.barbearia.api.auth.TokenRedefinicaoSenha;
+import com.barbearia.api.auth.TokenRedefinicaoSenhaRepository;
+import com.barbearia.api.auth.Usuario;
+import com.barbearia.api.auth.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;

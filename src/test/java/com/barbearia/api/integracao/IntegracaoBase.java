@@ -1,7 +1,7 @@
 package com.barbearia.api.integracao;
 
 import com.barbearia.api.TestcontainersConfiguration;
-import com.barbearia.api.service.EmailService;
+import com.barbearia.api.auth.EmailService;
 import com.jayway.jsonpath.JsonPath;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
