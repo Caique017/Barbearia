@@ -31,6 +31,7 @@ DB_PASSWORD=$(echo "$BANCO" | jq -r .password)
 API_SECURITY_TOKEN_SECRET=$(param api-security-token-secret)
 ORIGEM_SEGREDO=$(param origem-segredo)
 FRONT_URL=$(param front-url)
+CORS_ORIGENS=$(param front-url)
 PROXY_CONFIAVEL=true
 MAIL_HOST=email-smtp.${regiao}.amazonaws.com
 MAIL_PORT=587
