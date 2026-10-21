@@ -67,6 +67,12 @@ public class GlobalExceptionHandler {
                 .body(resposta.getBody());
     }
 
+    @ExceptionHandler(TokenRedefinicaoInvalidoException.class)
+    public ResponseEntity<ErroResposta> tratarTokenRedefinicaoInvalido(TokenRedefinicaoInvalidoException ex,
+                                                                       HttpServletRequest request) {
+        return montar(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErroResposta> tratarValidacao(MethodArgumentNotValidException ex,
                                                         HttpServletRequest request) {

@@ -34,7 +34,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST,
                                 "/auth/barbeiro/registro", "/auth/barbeiro/login",
-                                "/auth/cliente/registro", "/auth/cliente/login").permitAll()
+                                "/auth/cliente/registro", "/auth/cliente/login",
+                                "/auth/senha/esqueci", "/auth/senha/redefinir").permitAll()
                         .requestMatchers(HttpMethod.GET, "/barbeiros/publico/*").permitAll()
                         .anyRequest().authenticated()
                 )

@@ -1,6 +1,7 @@
 package com.barbearia.api.integracao;
 
 import com.barbearia.api.TestcontainersConfiguration;
+import com.barbearia.api.service.EmailService;
 import com.jayway.jsonpath.JsonPath;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -31,6 +33,9 @@ abstract class IntegracaoBase {
 
     @Autowired
     protected MockMvc mvc;
+
+    @MockitoBean
+    protected EmailService emailService;
 
     protected record BarbeiroCriado(String token, String email, String slug, String barbeiroId) {
     }
