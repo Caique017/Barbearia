@@ -42,7 +42,8 @@ public class SecurityConfig {
                                 "/auth/barbeiro/registro", "/auth/barbeiro/login",
                                 "/auth/cliente/registro", "/auth/cliente/login",
                                 "/auth/senha/esqueci", "/auth/senha/redefinir").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/barbeiros/publico/*", "/barbeiros/publico/*/servicos").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/barbeiros/publico/*", "/barbeiros/publico/*/servicos",
+                                "/barbeiros/publico/*/disponibilidade").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
