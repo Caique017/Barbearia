@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.barbearia.api.domain.Usuario;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,7 @@ import java.time.temporal.ChronoUnit;
 public class TokenService {
 
     private static final String ISSUER = "barbearia-api";
+    private static final String CLAIM_VERSAO_SESSAO = "sv";
     private static final int TAMANHO_MINIMO_SEGREDO = 32;
 
     @Value("${api.security.token.secret}")
@@ -40,6 +42,7 @@ public class TokenService {
                     .withIssuer(ISSUER)
                     .withSubject(usuario.getEmail())
                     .withClaim("role", usuario.getRole().name())
+                    .withClaim(CLAIM_VERSAO_SESSAO, usuario.getVersaoSessao())
                     .withIssuedAt(Instant.now())
                     .withExpiresAt(dataExpiracao())
                     .sign(algorithm);
@@ -48,14 +51,15 @@ public class TokenService {
         }
     }
 
-    public String validarToken(String token) {
+    public TokenAutenticacao validarToken(String token) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(secret);
-            return JWT.require(algorithm)
+            DecodedJWT jwt = JWT.require(algorithm)
                     .withIssuer(ISSUER)
+                    .withClaimPresence(CLAIM_VERSAO_SESSAO)
                     .build()
-                    .verify(token)
-                    .getSubject();
+                    .verify(token);
+            return new TokenAutenticacao(jwt.getSubject(), jwt.getClaim(CLAIM_VERSAO_SESSAO).asInt());
         } catch (JWTVerificationException e) {
             return null;
         }

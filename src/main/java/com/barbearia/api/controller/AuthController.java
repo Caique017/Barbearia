@@ -55,6 +55,12 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/sair")
+    public ResponseEntity<Void> sair(@AuthenticationPrincipal Usuario usuario) {
+        authService.encerrarSessoes(usuario);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UsuarioLogadoResponse> me(@AuthenticationPrincipal Usuario usuario) {
         UsuarioLogadoResponse response = new UsuarioLogadoResponse(

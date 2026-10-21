@@ -8,6 +8,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -92,6 +94,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResposta> tratarRotaInexistente(NoResourceFoundException ex,
                                                               HttpServletRequest request) {
         return montar(HttpStatus.NOT_FOUND, "Recurso não encontrado.", request);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErroResposta> tratarMetodoNaoSuportado(HttpRequestMethodNotSupportedException ex,
+                                                                 HttpServletRequest request) {
+        return montar(HttpStatus.METHOD_NOT_ALLOWED, "Método HTTP não suportado nesta rota.", request);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErroResposta> tratarTipoDeConteudoNaoSuportado(HttpMediaTypeNotSupportedException ex,
+                                                                         HttpServletRequest request) {
+        return montar(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Envie o corpo como application/json.", request);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

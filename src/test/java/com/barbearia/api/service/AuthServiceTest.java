@@ -12,6 +12,7 @@ import com.barbearia.api.exceptions.UsuarioExistenteException;
 import com.barbearia.api.repositories.BarbeiroRepository;
 import com.barbearia.api.repositories.ClienteRepository;
 import com.barbearia.api.repositories.UsuarioRepository;
+import com.barbearia.api.security.EventosSeguranca;
 import com.barbearia.api.security.LimiteTentativasLogin;
 import com.barbearia.api.security.TokenService;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,8 @@ class AuthServiceTest {
     private TokenService tokenService;
     @Mock
     private LimiteTentativasLogin limiteTentativas;
+    @Mock
+    private EventosSeguranca eventos;
 
     @InjectMocks
     private AuthService authService;
@@ -117,6 +120,7 @@ class AuthServiceTest {
 
         verify(limiteTentativas).registrarFalha(EMAIL);
         verify(limiteTentativas, never()).limpar(any());
+        verify(eventos).loginFalhou(EMAIL);
     }
 
     @Test
@@ -126,6 +130,21 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO))
                 .isInstanceOf(TentativasExcedidasException.class);
         verify(usuarioRepository, never()).findByEmail(any());
+        verify(eventos).loginBloqueado(EMAIL);
+    }
+
+    @Test
+    void encerrarSessoesSobeAVersaoDoUsuarioDoBanco() {
+        Usuario logado = usuario(Role.CLIENTE);
+        logado.setId(UUID.randomUUID());
+        Usuario doBanco = usuario(Role.CLIENTE);
+        when(usuarioRepository.findById(logado.getId())).thenReturn(Optional.of(doBanco));
+
+        authService.encerrarSessoes(logado);
+
+        assertThat(doBanco.getVersaoSessao()).isEqualTo(1);
+        assertThat(doBanco.aceitaVersaoDeSessao(0)).isFalse();
+        verify(eventos).sessoesEncerradas(EMAIL);
     }
 
     private Barbeiro barbeiroExistente() {

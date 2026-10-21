@@ -4,11 +4,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,7 +33,9 @@ class SegurancaIT extends IntegracaoBase {
     }
 
     static Stream<Arguments> rotasProtegidas() {
-        return Stream.concat(Stream.of(Arguments.of("GET", "/auth/me", null)), rotasDeBarbeiro());
+        return Stream.concat(Stream.of(
+                Arguments.of("GET", "/auth/me", null),
+                Arguments.of("POST", "/auth/sair", null)), rotasDeBarbeiro());
     }
 
     @ParameterizedTest(name = "{0} {1} sem token -> 401")
@@ -80,6 +85,26 @@ class SegurancaIT extends IntegracaoBase {
     void rotaPublicaComSlugInexistenteDa404() throws Exception {
         chamar("GET", "/barbeiros/publico/nao-existe-" + UUID.randomUUID(), null, null)
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void respostasLevamOsHeadersDeSeguranca() throws Exception {
+        chamar("GET", "/auth/me", null, null)
+                .andExpect(header().string("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("X-Frame-Options", "DENY"));
+    }
+
+    @Test
+    void metodoErradoDa405EnaoErroInterno() throws Exception {
+        chamar("PUT", "/auth/me", tokenDeCliente(), "{}").andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    void corpoQueNaoEJsonDa415EnaoErroInterno() throws Exception {
+        mvc.perform(post("/auth/cliente/login").contentType(MediaType.TEXT_PLAIN).content("x"))
+                .andExpect(status().isUnsupportedMediaType());
     }
 
     private String tokenDeCliente() throws Exception {

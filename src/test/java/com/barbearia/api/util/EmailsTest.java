@@ -15,4 +15,15 @@ class EmailsTest {
     void normalizarPreservaNull() {
         assertThat(Emails.normalizar(null)).isNull();
     }
+
+    @Test
+    void mascararDeixaSoAPrimeiraLetraEODominio() {
+        assertThat(Emails.mascarar("joao.silva@ex.com")).isEqualTo("j***@ex.com");
+    }
+
+    @Test
+    void mascararSemArrobaEscondeTudo() {
+        assertThat(Emails.mascarar("lixo")).isEqualTo("***");
+        assertThat(Emails.mascarar(null)).isNull();
+    }
 }

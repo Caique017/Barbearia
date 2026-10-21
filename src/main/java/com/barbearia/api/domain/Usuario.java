@@ -45,6 +45,17 @@ public class Usuario implements UserDetails {
     @Column(name = "criado_em", nullable = false, updatable = false)
     private Instant criadoEm;
 
+    @Column(name = "versao_sessao", nullable = false)
+    private int versaoSessao;
+
+    public boolean aceitaVersaoDeSessao(int versao) {
+        return versao == versaoSessao;
+    }
+
+    public void encerrarSessoes() {
+        versaoSessao++;
+    }
+
     @PrePersist
     void prePersist() {
         if (criadoEm == null) {

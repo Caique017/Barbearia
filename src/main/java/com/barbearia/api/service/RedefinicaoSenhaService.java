@@ -5,9 +5,11 @@ import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.exceptions.TokenRedefinicaoInvalidoException;
 import com.barbearia.api.repositories.TokenRedefinicaoSenhaRepository;
 import com.barbearia.api.repositories.UsuarioRepository;
+import com.barbearia.api.security.EventosSeguranca;
 import com.barbearia.api.security.LimiteTentativasLogin;
 import com.barbearia.api.security.TokenAleatorio;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,8 +27,9 @@ public class RedefinicaoSenhaService {
     private final UsuarioRepository usuarioRepository;
     private final TokenRedefinicaoSenhaRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
     private final LimiteTentativasLogin limiteTentativas;
+    private final EventosSeguranca eventos;
     private final Clock clock;
 
     @Value("${api.front.url}")
@@ -38,14 +41,16 @@ public class RedefinicaoSenhaService {
     public RedefinicaoSenhaService(UsuarioRepository usuarioRepository,
                                    TokenRedefinicaoSenhaRepository tokenRepository,
                                    PasswordEncoder passwordEncoder,
-                                   EmailService emailService,
+                                   ApplicationEventPublisher eventPublisher,
                                    LimiteTentativasLogin limiteTentativas,
+                                   EventosSeguranca eventos,
                                    Clock clock) {
         this.usuarioRepository = usuarioRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
-        this.emailService = emailService;
+        this.eventPublisher = eventPublisher;
         this.limiteTentativas = limiteTentativas;
+        this.eventos = eventos;
         this.clock = clock;
     }
 
@@ -71,8 +76,9 @@ public class RedefinicaoSenhaService {
                 .criadoEm(agora)
                 .build());
 
-        emailService.enviarRedefinicaoSenha(usuario.getEmail(), usuario.getNome(),
-                frontUrl + "/redefinir-senha?token=" + token);
+        eventos.redefinicaoSolicitada(usuario.getEmail());
+        eventPublisher.publishEvent(new RedefinicaoSenhaSolicitada(usuario.getEmail(), usuario.getNome(),
+                frontUrl + "/redefinir-senha?token=" + token));
     }
 
     @Transactional
@@ -82,10 +88,15 @@ public class RedefinicaoSenhaService {
                 .filter(encontrado -> encontrado.valido(agora))
                 .orElseThrow(() -> new TokenRedefinicaoInvalidoException(LINK_INVALIDO));
 
+        if (tokenRepository.marcarUsado(registro.getId(), agora) == 0) {
+            throw new TokenRedefinicaoInvalidoException(LINK_INVALIDO);
+        }
+
         Usuario usuario = registro.getUsuario();
         usuario.setSenha(passwordEncoder.encode(novaSenha));
-        registro.marcarUsado(agora);
+        usuario.encerrarSessoes();
         tokenRepository.invalidarPendentes(usuario, agora);
         limiteTentativas.limpar(usuario.getEmail());
+        eventos.senhaRedefinida(usuario.getEmail());
     }
 }

@@ -1,5 +1,6 @@
 package com.barbearia.api.service;
 
+import com.barbearia.api.util.Emails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,7 +42,7 @@ public class EmailService {
         try {
             mailSender.send(mensagem);
         } catch (MailException e) {
-            log.error("Falha ao enviar e-mail de redefinição de senha para {}", para, e);
+            log.error("Falha ao enviar e-mail de redefinição de senha para {}", Emails.mascarar(para), e);
         }
     }
 }
