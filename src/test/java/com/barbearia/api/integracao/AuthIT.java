@@ -105,6 +105,24 @@ class AuthIT extends IntegracaoBase {
     }
 
     @Test
+    void sairInvalidaOsTokensJaEmitidosMasNaoOsProximos() throws Exception {
+        BarbeiroCriado barbeiro = registrarBarbeiro();
+        String outroDispositivo = ler(chamar("POST", "/auth/barbeiro/login", null, login(barbeiro.email(), SENHA))
+                .andExpect(status().isOk())
+                .andReturn(), "$.token");
+
+        chamar("POST", "/auth/sair", barbeiro.token(), null).andExpect(status().isNoContent());
+
+        chamar("GET", "/auth/me", barbeiro.token(), null).andExpect(status().isUnauthorized());
+        chamar("GET", "/auth/me", outroDispositivo, null).andExpect(status().isUnauthorized());
+
+        String novo = ler(chamar("POST", "/auth/barbeiro/login", null, login(barbeiro.email(), SENHA))
+                .andExpect(status().isOk())
+                .andReturn(), "$.token");
+        chamar("GET", "/auth/me", novo, null).andExpect(status().isOk());
+    }
+
+    @Test
     void nomeBarbeariaSoComSimbolosDa400NoCampoCerto() throws Exception {
         chamar("POST", "/auth/barbeiro/registro", null, cadastroBarbeiro(emailUnico(), "!!! ###", SENHA))
                 .andExpect(status().isBadRequest())

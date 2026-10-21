@@ -31,9 +31,11 @@ public class SecurityFilter extends OncePerRequestFilter {
         String token = recuperarToken(request);
 
         if (token != null) {
-            String email = tokenService.validarToken(token);
-            if (email != null) {
-                usuarioRepository.findByEmail(email).ifPresent(this::autenticar);
+            TokenAutenticacao autenticacao = tokenService.validarToken(token);
+            if (autenticacao != null) {
+                usuarioRepository.findByEmail(autenticacao.email())
+                        .filter(usuario -> usuario.aceitaVersaoDeSessao(autenticacao.versaoSessao()))
+                        .ifPresent(this::autenticar);
             }
         }
 

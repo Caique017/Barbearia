@@ -1,10 +1,20 @@
 package com.barbearia.api.integracao;
 
+import com.barbearia.api.domain.TokenRedefinicaoSenha;
+import com.barbearia.api.domain.Usuario;
+import com.barbearia.api.repositories.TokenRedefinicaoSenhaRepository;
+import com.barbearia.api.repositories.UsuarioRepository;
+import com.barbearia.api.security.TokenAleatorio;
+import com.barbearia.api.service.LimpezaTokensRedefinicao;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -17,6 +27,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RedefinicaoSenhaIT extends IntegracaoBase {
 
     private static final String NOVA_SENHA = "novaSenha456";
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+    @Autowired
+    private TokenRedefinicaoSenhaRepository tokenRepository;
+    @Autowired
+    private LimpezaTokensRedefinicao limpeza;
 
     private void pedirLink(String email) throws Exception {
         chamar("POST", "/auth/senha/esqueci", null, json("email", email))
@@ -47,6 +64,35 @@ class RedefinicaoSenhaIT extends IntegracaoBase {
 
         login(barbeiro.email(), NOVA_SENHA, 200);
         login(barbeiro.email(), SENHA, 401);
+    }
+
+    @Test
+    void tokenDeLoginEmitidoAntesDaTrocaDeSenhaDeixaDeValer() throws Exception {
+        BarbeiroCriado barbeiro = registrarBarbeiro();
+        chamar("GET", "/auth/me", barbeiro.token(), null).andExpect(status().isOk());
+
+        pedirLink(barbeiro.email());
+        String token = tokenDoLinkEnviado(barbeiro.email());
+        chamar("POST", "/auth/senha/redefinir", null, json("token", token, "novaSenha", NOVA_SENHA))
+                .andExpect(status().isNoContent());
+
+        chamar("GET", "/auth/me", barbeiro.token(), null).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void limpezaApagaSoOsTokensAntigos() throws Exception {
+        BarbeiroCriado barbeiro = registrarBarbeiro();
+        Usuario usuario = usuarioRepository.findByEmail(barbeiro.email()).orElseThrow();
+        Instant antigo = Instant.now().minus(Duration.ofDays(3));
+        TokenRedefinicaoSenha velho = tokenRepository.save(TokenRedefinicaoSenha.builder()
+                .usuario(usuario).tokenHash(TokenAleatorio.hash(TokenAleatorio.gerar()))
+                .expiraEm(antigo).criadoEm(antigo).build());
+
+        pedirLink(barbeiro.email());
+        limpeza.limpar();
+
+        assertThat(tokenRepository.findById(velho.getId())).isEmpty();
+        assertThat(tokenRepository.findAll()).anyMatch(t -> t.getUsuario().getId().equals(usuario.getId()));
     }
 
     @Test

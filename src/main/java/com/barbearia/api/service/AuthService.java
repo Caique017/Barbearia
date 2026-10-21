@@ -10,10 +10,12 @@ import com.barbearia.api.dto.cliente.ClienteLoginResponse;
 import com.barbearia.api.enums.Role;
 import com.barbearia.api.exceptions.BarbeiroNaoEncontradoException;
 import com.barbearia.api.exceptions.CredenciaisInvalidasException;
+import com.barbearia.api.exceptions.TentativasExcedidasException;
 import com.barbearia.api.exceptions.UsuarioExistenteException;
 import com.barbearia.api.repositories.BarbeiroRepository;
 import com.barbearia.api.repositories.ClienteRepository;
 import com.barbearia.api.repositories.UsuarioRepository;
+import com.barbearia.api.security.EventosSeguranca;
 import com.barbearia.api.security.LimiteTentativasLogin;
 import com.barbearia.api.security.TokenService;
 import lombok.RequiredArgsConstructor;
@@ -34,10 +36,16 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final LimiteTentativasLogin limiteTentativas;
+    private final EventosSeguranca eventos;
 
     @Transactional(readOnly = true)
     public Usuario login(String email, String senha, Role rolePermitida) {
-        limiteTentativas.verificar(email);
+        try {
+            limiteTentativas.verificar(email);
+        } catch (TentativasExcedidasException e) {
+            eventos.loginBloqueado(email);
+            throw e;
+        }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .filter(encontrado -> encontrado.getRole() == rolePermitida)
@@ -47,11 +55,19 @@ public class AuthService {
 
         if (usuario == null || !senhaConfere) {
             limiteTentativas.registrarFalha(email);
+            eventos.loginFalhou(email);
             throw new CredenciaisInvalidasException(CREDENCIAIS_INVALIDAS);
         }
 
         limiteTentativas.limpar(email);
         return usuario;
+    }
+
+    @Transactional
+    public void encerrarSessoes(Usuario logado) {
+        Usuario usuario = usuarioRepository.findById(logado.getId()).orElseThrow();
+        usuario.encerrarSessoes();
+        eventos.sessoesEncerradas(usuario.getEmail());
     }
 
     @Transactional

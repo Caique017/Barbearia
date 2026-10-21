@@ -36,11 +36,7 @@ public class TokenRedefinicaoSenha {
     private Instant criadoEm;
 
     public boolean valido(Instant agora) {
-       return usadoEm == null && agora.isBefore(expiraEm);
-    }
-
-    public void marcarUsado(Instant agora) {
-        usadoEm = agora;
+        return usadoEm == null && agora.isBefore(expiraEm);
     }
 
     @PrePersist

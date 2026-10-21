@@ -25,7 +25,7 @@ class TokenServiceTest {
     void tokenGeradoValidaEDevolveOEmail() {
         TokenService service = tokenService(SEGREDO, 2);
 
-        assertThat(service.validarToken(service.gerarToken(USUARIO))).isEqualTo("a@ex.com");
+        assertThat(service.validarToken(service.gerarToken(USUARIO)).email()).isEqualTo("a@ex.com");
     }
 
     @Test
@@ -52,6 +52,14 @@ class TokenServiceTest {
         TokenService service = tokenService(SEGREDO, -1);
 
         assertThat(service.validarToken(service.gerarToken(USUARIO))).isNull();
+    }
+
+    @Test
+    void tokenCarregaAVersaoDeSessaoDoUsuario() {
+        TokenService service = tokenService(SEGREDO, 2);
+        Usuario usuario = Usuario.builder().email("a@ex.com").role(Role.BARBEIRO).versaoSessao(3).build();
+
+        assertThat(service.validarToken(service.gerarToken(usuario)).versaoSessao()).isEqualTo(3);
     }
 
     @Test

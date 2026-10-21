@@ -18,4 +18,12 @@ public interface TokenRedefinicaoSenhaRepository extends JpaRepository<TokenRede
     @Modifying
     @Query("update TokenRedefinicaoSenha t set t.usadoEm = :agora where t.usuario = :usuario and t.usadoEm is null")
     int invalidarPendentes(Usuario usuario, Instant agora);
+
+    @Modifying
+    @Query("update TokenRedefinicaoSenha t set t.usadoEm = :agora where t.id = :id and t.usadoEm is null")
+    int marcarUsado(UUID id, Instant agora);
+
+    @Modifying
+    @Query("delete from TokenRedefinicaoSenha t where t.expiraEm < :limite or t.usadoEm < :limite")
+    int apagarAnterioresA(Instant limite);
 }
