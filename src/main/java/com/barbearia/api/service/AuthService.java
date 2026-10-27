@@ -27,6 +27,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -162,6 +164,7 @@ public class AuthService {
                 .senha(passwordEncoder.encode(senha))
                 .role(role)
                 .build();
+        usuario.aceitarTermos(TermosDeUso.VERSAO, Instant.now());
         usuarioRepository.save(usuario);
         return usuario;
     }

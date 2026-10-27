@@ -48,6 +48,17 @@ public class Usuario implements UserDetails {
     @Column(name = "versao_sessao", nullable = false)
     private int versaoSessao;
 
+    @Column(name = "termos_aceitos_em")
+    private Instant termosAceitosEm;
+
+    @Column(name = "termos_versao", length = 20)
+    private String termosVersao;
+
+    public void aceitarTermos(String versao, Instant agora) {
+        termosVersao = versao;
+        termosAceitosEm = agora;
+    }
+
     public boolean aceitaVersaoDeSessao(int versao) {
         return versao == versaoSessao;
     }

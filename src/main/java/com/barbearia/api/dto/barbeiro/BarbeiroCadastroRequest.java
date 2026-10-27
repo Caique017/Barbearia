@@ -24,7 +24,10 @@ public record BarbeiroCadastroRequest(
         @NotBlank
         @Size(min = 8, max = 64, message = "A senha deve ter entre 8 e 64 caracteres.")
         @MaxBytes(value = 72, message = "A senha é longa demais.")
-        String senha
+        String senha,
+        @NotNull(message = "Aceite os termos de uso e a política de privacidade.")
+        @AssertTrue(message = "Aceite os termos de uso e a política de privacidade.")
+        Boolean aceiteTermos
 ) {
     public BarbeiroCadastroRequest {
         email = Emails.normalizar(email);
