@@ -13,6 +13,7 @@ public record AssinaturaResponse(
         Instant liberadaAte,
         long diasRestantes,
         FormaPagamento formaPagamento,
-        BigDecimal precoMensal
+        BigDecimal precoMensal,
+        boolean cancelamentoAgendado
 ) {
 }

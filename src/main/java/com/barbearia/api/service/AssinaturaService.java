@@ -6,6 +6,7 @@ import com.barbearia.api.domain.EventoPagamentoProcessado;
 import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.dto.assinatura.AssinaturaResponse;
 import com.barbearia.api.enums.FormaPagamento;
+import com.barbearia.api.exceptions.AssinaturaDuplicadaException;
 import com.barbearia.api.exceptions.AssinaturaInativaException;
 import com.barbearia.api.exceptions.PagamentoIndisponivelException;
 import com.barbearia.api.repositories.AssinaturaRepository;
@@ -26,6 +27,8 @@ import java.util.Optional;
 public class AssinaturaService {
 
     static final String TESTE_ACABOU = "Seu período de teste acabou. Assine para continuar usando a agenda.";
+    static final String JA_ASSINA_NO_CARTAO =
+            "Você já assina no cartão. Use \"Gerenciar pagamento\" para trocar o cartão ou cancelar.";
     static final String BARBEARIA_INDISPONIVEL = "Essa barbearia não está aceitando agendamentos online no momento.";
     private static final Logger log = LoggerFactory.getLogger(AssinaturaService.class);
 
@@ -71,6 +74,10 @@ public class AssinaturaService {
         exigirGateway();
         Barbeiro barbeiro = barbeiroLogado.de(logado);
         Assinatura assinatura = daBarbearia(barbeiro);
+
+        if (assinatura.assinaNoCartao()) {
+            throw new AssinaturaDuplicadaException(JA_ASSINA_NO_CARTAO);
+        }
 
         if (assinatura.getStripeCustomerId() == null) {
             assinatura.setStripeCustomerId(gateway.criarCliente(barbeiro.getId(), barbeiro.getNomeBarbearia(),
@@ -135,7 +142,7 @@ public class AssinaturaService {
         switch (evento.tipo()) {
             case CHECKOUT_CONCLUIDO -> {
                 if (evento.forma() == FormaPagamento.CARTAO) {
-                    assinatura.setStripeSubscriptionId(evento.assinaturaId());
+                    assinatura.assinadaNoCartao(evento.assinaturaId(), agora);
                 } else if (evento.pago()) {
                     assinatura.pagaNoPix(periodoPix, agora);
                 }
@@ -146,7 +153,9 @@ public class AssinaturaService {
                 }
             }
             case FATURA_FALHOU -> assinatura.pagamentoFalhou(agora);
-            case ASSINATURA_CANCELADA -> assinatura.cancelada(agora);
+            case ASSINATURA_ATUALIZADA ->
+                    assinatura.cancelamentoAgendado(evento.assinaturaId(), evento.cancelamentoAgendado(), agora);
+            case ASSINATURA_CANCELADA -> assinatura.cancelada(evento.assinaturaId(), agora);
             default -> {
             }
         }
@@ -169,6 +178,6 @@ public class AssinaturaService {
         long dias = ate.isAfter(agora) ? Duration.between(agora, ate).toDays() : 0;
 
         return new AssinaturaResponse(assinatura.getStatus(), assinatura.ativa(agora), assinatura.getTesteAte(), ate,
-                dias, assinatura.getFormaPagamento(), precoMensal);
+                dias, assinatura.getFormaPagamento(), precoMensal, assinatura.isCancelamentoAgendado());
     }
 }

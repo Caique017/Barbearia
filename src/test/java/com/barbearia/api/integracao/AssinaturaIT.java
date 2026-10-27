@@ -46,6 +46,15 @@ class AssinaturaIT extends IntegracaoBase {
                 """.formatted(eventoId, Stripe.API_VERSION, clienteStripe);
     }
 
+    private static String assinaturaNoCartao(String tipo, String eventoId, String clienteStripe, String assinaturaId,
+                                             boolean cancelaNoFim) {
+        return """
+                {"id":"%s","object":"event","type":"%s","api_version":"%s",
+                 "data":{"object":{"id":"%s","object":"subscription","customer":"%s",
+                 "status":"active","cancel_at_period_end":%s}}}
+                """.formatted(eventoId, tipo, Stripe.API_VERSION, assinaturaId, clienteStripe, cancelaNoFim);
+    }
+
     private static String assinar(String payload, String segredo) throws Exception {
         long agora = Instant.now().getEpochSecond();
         Mac hmac = Mac.getInstance("HmacSHA256");
@@ -109,6 +118,29 @@ class AssinaturaIT extends IntegracaoBase {
         assertThat(liberadaAte).isAfter(Instant.now().plus(Duration.ofDays(29)));
         chamar("POST", "/servicos", barbeiro.token(), "{\"nome\":\"Corte\",\"preco\":40,\"duracaoMinutos\":30}")
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void cancelamentoPeloPortalApareceNoPlanoEDepoisEncerraAAssinatura() throws Exception {
+        BarbeiroCriado barbeiro = registrarBarbeiro();
+        String clienteStripe = "cus_" + sufixoUnico();
+        String assinaturaId = "sub_" + sufixoUnico();
+        vencerOTeste(barbeiro, clienteStripe);
+        Assinatura assinatura = assinaturaDe(barbeiro);
+        assinatura.setStripeSubscriptionId(assinaturaId);
+        assinaturaRepository.save(assinatura);
+
+        enviarWebhook(assinaturaNoCartao("customer.subscription.updated", "evt_" + sufixoUnico(), clienteStripe,
+                assinaturaId, true), SEGREDO_WEBHOOK, 200);
+        chamar("GET", "/assinatura", barbeiro.token(), null)
+                .andExpect(jsonPath("$.cancelamentoAgendado").value(true));
+
+        enviarWebhook(assinaturaNoCartao("customer.subscription.deleted", "evt_" + sufixoUnico(), clienteStripe,
+                assinaturaId, true), SEGREDO_WEBHOOK, 200);
+        chamar("GET", "/assinatura", barbeiro.token(), null)
+                .andExpect(jsonPath("$.status").value("CANCELADA"))
+                .andExpect(jsonPath("$.cancelamentoAgendado").value(false));
+        assertThat(assinaturaDe(barbeiro).getStripeSubscriptionId()).isNull();
     }
 
     @Test

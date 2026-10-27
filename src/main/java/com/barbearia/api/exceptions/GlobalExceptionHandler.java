@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({SlugIndisponivelException.class, ServicoDuplicadoException.class,
             HorarioIndisponivelException.class, TransicaoAgendamentoInvalidaException.class,
-            ClienteSemVinculoException.class})
+            ClienteSemVinculoException.class, AssinaturaDuplicadaException.class})
     public ResponseEntity<ErroResposta> tratarConflito(RuntimeException ex, HttpServletRequest request) {
         return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
