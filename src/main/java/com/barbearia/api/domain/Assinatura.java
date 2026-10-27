@@ -50,6 +50,9 @@ public class Assinatura {
     @Column(name = "stripe_subscription_id")
     private String stripeSubscriptionId;
 
+    @Column(name = "cancelamento_agendado", nullable = false)
+    private boolean cancelamentoAgendado;
+
     @Column(name = "lembrete_enviado_em")
     private Instant lembreteEnviadoEm;
 
@@ -91,13 +94,40 @@ public class Assinatura {
         atualizadoEm = agora;
     }
 
+    public boolean assinaNoCartao() {
+        return stripeSubscriptionId != null;
+    }
+
+    public void assinadaNoCartao(String assinaturaId, Instant agora) {
+        stripeSubscriptionId = assinaturaId;
+        cancelamentoAgendado = false;
+        atualizadoEm = agora;
+    }
+
     public void pagamentoFalhou(Instant agora) {
         status = StatusAssinatura.PAGAMENTO_PENDENTE;
         atualizadoEm = agora;
     }
 
-    public void cancelada(Instant agora) {
-        status = StatusAssinatura.CANCELADA;
+    public void cancelamentoAgendado(String assinaturaId, boolean agendado, Instant agora) {
+        if (!assinaturaAtual(assinaturaId)) {
+            return;
+        }
+        cancelamentoAgendado = agendado;
         atualizadoEm = agora;
+    }
+
+    public void cancelada(String assinaturaId, Instant agora) {
+        if (!assinaturaAtual(assinaturaId)) {
+            return;
+        }
+        status = StatusAssinatura.CANCELADA;
+        stripeSubscriptionId = null;
+        cancelamentoAgendado = false;
+        atualizadoEm = agora;
+    }
+
+    private boolean assinaturaAtual(String assinaturaId) {
+        return assinaturaId != null && assinaturaId.equals(stripeSubscriptionId);
     }
 }

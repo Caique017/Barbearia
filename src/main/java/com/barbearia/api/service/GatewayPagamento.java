@@ -21,6 +21,7 @@ public interface GatewayPagamento {
         CHECKOUT_CONCLUIDO,
         FATURA_PAGA,
         FATURA_FALHOU,
+        ASSINATURA_ATUALIZADA,
         ASSINATURA_CANCELADA,
         IGNORADO
     }
@@ -32,7 +33,8 @@ public interface GatewayPagamento {
             String assinaturaId,
             FormaPagamento forma,
             boolean pago,
-            Instant periodoAte
+            Instant periodoAte,
+            boolean cancelamentoAgendado
     ) {
     }
 }

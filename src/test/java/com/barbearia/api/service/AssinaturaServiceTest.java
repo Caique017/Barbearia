@@ -6,6 +6,7 @@ import com.barbearia.api.domain.EventoPagamentoProcessado;
 import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.enums.FormaPagamento;
 import com.barbearia.api.enums.StatusAssinatura;
+import com.barbearia.api.exceptions.AssinaturaDuplicadaException;
 import com.barbearia.api.exceptions.AssinaturaInativaException;
 import com.barbearia.api.exceptions.PagamentoIndisponivelException;
 import com.barbearia.api.repositories.AssinaturaRepository;
@@ -72,7 +73,8 @@ class AssinaturaServiceTest {
     void pixPagoLibera30DiasEGuardaOEvento() {
         clienteConhecido();
 
-        webhook(new Evento("evt_1", TipoEvento.CHECKOUT_CONCLUIDO, "cus_1", null, FormaPagamento.PIX, true, null));
+        webhook(new Evento("evt_1", TipoEvento.CHECKOUT_CONCLUIDO, "cus_1", null, FormaPagamento.PIX, true,
+                null, false));
 
         assertThat(assinatura.ativa(AGORA)).isTrue();
         assertThat(assinatura.getAcessoAte()).isEqualTo(AGORA.plus(Duration.ofDays(30)));
@@ -83,7 +85,8 @@ class AssinaturaServiceTest {
     void pixAindaNaoPagoNaoLibera() {
         clienteConhecido();
 
-        webhook(new Evento("evt_1", TipoEvento.CHECKOUT_CONCLUIDO, "cus_1", null, FormaPagamento.PIX, false, null));
+        webhook(new Evento("evt_1", TipoEvento.CHECKOUT_CONCLUIDO, "cus_1", null, FormaPagamento.PIX, false,
+                null, false));
 
         assertThat(assinatura.ativa(AGORA)).isFalse();
     }
@@ -92,7 +95,8 @@ class AssinaturaServiceTest {
     void eventoRepetidoNaoEProcessadoDuasVezes() {
         when(eventoRepository.existsById("evt_1")).thenReturn(true);
 
-        webhook(new Evento("evt_1", TipoEvento.CHECKOUT_CONCLUIDO, "cus_1", null, FormaPagamento.PIX, true, null));
+        webhook(new Evento("evt_1", TipoEvento.CHECKOUT_CONCLUIDO, "cus_1", null, FormaPagamento.PIX, true,
+                null, false));
 
         verify(assinaturaRepository, never()).findByStripeCustomerId(any());
         verify(eventoRepository, never()).save(any());
@@ -103,7 +107,7 @@ class AssinaturaServiceTest {
         clienteConhecido();
         Instant fim = AGORA.plus(Duration.ofDays(31));
 
-        webhook(new Evento("evt_2", TipoEvento.FATURA_PAGA, "cus_1", null, FormaPagamento.CARTAO, true, fim));
+        webhook(new Evento("evt_2", TipoEvento.FATURA_PAGA, "cus_1", null, FormaPagamento.CARTAO, true, fim, false));
 
         assertThat(assinatura.getAcessoAte()).isEqualTo(fim);
         assertThat(assinatura.getStatus()).isEqualTo(StatusAssinatura.ATIVA);
@@ -113,7 +117,8 @@ class AssinaturaServiceTest {
     void checkoutDoCartaoSoGuardaAAssinaturaEEsperaAFatura() {
         clienteConhecido();
 
-        webhook(new Evento("evt_3", TipoEvento.CHECKOUT_CONCLUIDO, "cus_1", "sub_1", FormaPagamento.CARTAO, true, null));
+        webhook(new Evento("evt_3", TipoEvento.CHECKOUT_CONCLUIDO, "cus_1", "sub_1", FormaPagamento.CARTAO, true,
+                null, false));
 
         assertThat(assinatura.getStripeSubscriptionId()).isEqualTo("sub_1");
         assertThat(assinatura.ativa(AGORA)).isFalse();
@@ -122,18 +127,64 @@ class AssinaturaServiceTest {
     @Test
     void faturaRecusadaECancelamentoMudamOStatus() {
         clienteConhecido();
+        assinatura.setStripeSubscriptionId("sub_1");
 
-        webhook(new Evento("evt_4", TipoEvento.FATURA_FALHOU, "cus_1", null, FormaPagamento.CARTAO, false, null));
+        webhook(new Evento("evt_4", TipoEvento.FATURA_FALHOU, "cus_1", null, FormaPagamento.CARTAO, false,
+                null, false));
         assertThat(assinatura.getStatus()).isEqualTo(StatusAssinatura.PAGAMENTO_PENDENTE);
 
         webhook(new Evento("evt_5", TipoEvento.ASSINATURA_CANCELADA, "cus_1", "sub_1", FormaPagamento.CARTAO, false,
-                null));
+                null, false));
         assertThat(assinatura.getStatus()).isEqualTo(StatusAssinatura.CANCELADA);
+        assertThat(assinatura.assinaNoCartao()).isFalse();
+    }
+
+    @Test
+    void cancelamentoAgendadoNoPortalApareceEPodeSerDesfeito() {
+        clienteConhecido();
+        assinatura.setStripeSubscriptionId("sub_1");
+
+        webhook(new Evento("evt_7", TipoEvento.ASSINATURA_ATUALIZADA, "cus_1", "sub_1", FormaPagamento.CARTAO, false,
+                null, true));
+        assertThat(assinatura.isCancelamentoAgendado()).isTrue();
+
+        webhook(new Evento("evt_8", TipoEvento.ASSINATURA_ATUALIZADA, "cus_1", "sub_1", FormaPagamento.CARTAO, false,
+                null, false));
+        assertThat(assinatura.isCancelamentoAgendado()).isFalse();
+    }
+
+    @Test
+    void eventoDeUmaAssinaturaAntigaNaoMexeNaAtual() {
+        clienteConhecido();
+        assinatura.setStripeSubscriptionId("sub_novo");
+
+        webhook(new Evento("evt_9", TipoEvento.ASSINATURA_ATUALIZADA, "cus_1", "sub_velho", FormaPagamento.CARTAO,
+                false, null, true));
+        webhook(new Evento("evt_10", TipoEvento.ASSINATURA_CANCELADA, "cus_1", "sub_velho", FormaPagamento.CARTAO,
+                false, null, false));
+
+        assertThat(assinatura.isCancelamentoAgendado()).isFalse();
+        assertThat(assinatura.getStripeSubscriptionId()).isEqualTo("sub_novo");
+        assertThat(assinatura.getStatus()).isEqualTo(StatusAssinatura.TESTE);
+    }
+
+    @Test
+    void quemJaAssinaNoCartaoNaoAbreOutroCheckout() {
+        Usuario logado = Usuario.builder().email("dono@ex.com").build();
+        assinatura.setStripeSubscriptionId("sub_1");
+        when(gateway.configurado()).thenReturn(true);
+        when(barbeiroLogado.de(logado)).thenReturn(barbeiro);
+        when(assinaturaRepository.findByBarbeiroId(barbeiro.getId())).thenReturn(Optional.of(assinatura));
+
+        assertThatThrownBy(() -> service.abrirPagamento(logado, FormaPagamento.PIX))
+                .isInstanceOf(AssinaturaDuplicadaException.class)
+                .hasMessage(AssinaturaService.JA_ASSINA_NO_CARTAO);
+        verify(gateway, never()).criarCheckout(any(), any(), any());
     }
 
     @Test
     void eventoIgnoradoNemEGravado() {
-        webhook(new Evento("evt_6", TipoEvento.IGNORADO, null, null, null, false, null));
+        webhook(new Evento("evt_6", TipoEvento.IGNORADO, null, null, null, false, null, false));
 
         verify(eventoRepository, never()).save(any());
     }

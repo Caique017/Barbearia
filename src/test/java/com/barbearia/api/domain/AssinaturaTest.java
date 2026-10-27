@@ -76,9 +76,10 @@ class AssinaturaTest {
     void cancelarNaoTiraOQueJaFoiPago() {
         Assinatura assinatura = nova();
         Instant fimDoMes = CADASTRO.plus(Duration.ofDays(37));
+        assinatura.assinadaNoCartao("sub_1", CADASTRO);
         assinatura.pagaNoCartaoAte(fimDoMes, CADASTRO);
 
-        assinatura.cancelada(CADASTRO.plus(Duration.ofDays(20)));
+        assinatura.cancelada("sub_1", CADASTRO.plus(Duration.ofDays(20)));
 
         assertThat(assinatura.getStatus()).isEqualTo(StatusAssinatura.CANCELADA);
         assertThat(assinatura.ativa(CADASTRO.plus(Duration.ofDays(30)))).isTrue();

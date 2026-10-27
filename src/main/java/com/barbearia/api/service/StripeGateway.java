@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Component
@@ -60,7 +61,8 @@ public class StripeGateway implements GatewayPagamento {
                     .setName(nome)
                     .setEmail(email)
                     .putMetadata("barbeiro_id", barbeiroId.toString())
-                    .build(), opcoes()).getId();
+                    .build(), opcoes("cliente-" + barbeiroId + "-" + Integer.toHexString(Objects.hash(nome, email))))
+                    .getId();
         } catch (StripeException e) {
             throw falha("criar o cliente", e);
         }
@@ -137,7 +139,7 @@ public class StripeGateway implements GatewayPagamento {
                 boolean assinaturaNoCartao = "subscription".equals(sessao.getMode());
                 yield new Evento(evento.getId(), TipoEvento.CHECKOUT_CONCLUIDO, sessao.getCustomer(),
                         sessao.getSubscription(), assinaturaNoCartao ? FormaPagamento.CARTAO : FormaPagamento.PIX,
-                        "paid".equals(sessao.getPaymentStatus()), null);
+                        "paid".equals(sessao.getPaymentStatus()), null, false);
             }
             case "invoice.paid" -> {
                 Invoice fatura = (Invoice) objeto;
@@ -146,16 +148,23 @@ public class StripeGateway implements GatewayPagamento {
                         .max(Instant::compareTo)
                         .orElse(null);
                 yield new Evento(evento.getId(), TipoEvento.FATURA_PAGA, fatura.getCustomer(), null,
-                        FormaPagamento.CARTAO, true, ate);
+                        FormaPagamento.CARTAO, true, ate, false);
             }
             case "invoice.payment_failed" -> new Evento(evento.getId(), TipoEvento.FATURA_FALHOU,
-                    ((Invoice) objeto).getCustomer(), null, FormaPagamento.CARTAO, false, null);
+                    ((Invoice) objeto).getCustomer(), null, FormaPagamento.CARTAO, false, null, false);
+            case "customer.subscription.updated" -> {
+                Subscription atualizada = (Subscription) objeto;
+                boolean agendado = Boolean.TRUE.equals(atualizada.getCancelAtPeriodEnd())
+                        || atualizada.getCancelAt() != null;
+                yield new Evento(evento.getId(), TipoEvento.ASSINATURA_ATUALIZADA, atualizada.getCustomer(),
+                        atualizada.getId(), FormaPagamento.CARTAO, false, null, agendado);
+            }
             case "customer.subscription.deleted" -> {
                 Subscription cancelada = (Subscription) objeto;
                 yield new Evento(evento.getId(), TipoEvento.ASSINATURA_CANCELADA, cancelada.getCustomer(),
-                        cancelada.getId(), FormaPagamento.CARTAO, false, null);
+                        cancelada.getId(), FormaPagamento.CARTAO, false, null, false);
             }
-            default -> new Evento(evento.getId(), TipoEvento.IGNORADO, null, null, null, false, null);
+            default -> new Evento(evento.getId(), TipoEvento.IGNORADO, null, null, null, false, null, false);
         };
     }
 
@@ -171,10 +180,14 @@ public class StripeGateway implements GatewayPagamento {
     }
 
     private RequestOptions opcoes() {
+        return opcoes(null);
+    }
+
+    private RequestOptions opcoes(String chaveIdempotencia) {
         if (!configurado()) {
             throw new PagamentoIndisponivelException("Pagamentos ainda não configurados.");
         }
-        return RequestOptions.builder().setApiKey(chaveSecreta).build();
+        return RequestOptions.builder().setApiKey(chaveSecreta).setIdempotencyKey(chaveIdempotencia).build();
     }
 
     private static PagamentoIndisponivelException falha(String acao, StripeException e) {
