@@ -44,6 +44,7 @@ class AuthServiceTest {
 
     private static final String EMAIL = "pessoa@ex.com";
     private static final String TELEFONE = "11999998888";
+    private static final String IP = "203.0.113.10";
 
     @Mock
     private UsuarioRepository usuarioRepository;
@@ -77,21 +78,22 @@ class AuthServiceTest {
         when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(barbeiro));
         when(passwordEncoder.matches("senha123", "hash")).thenReturn(true);
 
-        assertThat(authService.login(EMAIL, "senha123", Role.BARBEIRO)).isSameAs(barbeiro);
+        assertThat(authService.login(EMAIL, "senha123", Role.BARBEIRO, IP)).isSameAs(barbeiro);
         verify(limiteTentativas).limpar(EMAIL);
     }
 
     @Test
     void osTresCasosDeFalhaDevolvemAMesmaMensagem() {
         when(usuarioRepository.findByEmail("inexistente@ex.com")).thenReturn(Optional.empty());
-        Throwable emailInexistente = catchThrowable(() -> authService.login("inexistente@ex.com", "x", Role.BARBEIRO));
+        Throwable emailInexistente = catchThrowable(
+                () -> authService.login("inexistente@ex.com", "x", Role.BARBEIRO, IP));
 
         when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(usuario(Role.BARBEIRO)));
         when(passwordEncoder.matches("errada", "hash")).thenReturn(false);
-        Throwable senhaErrada = catchThrowable(() -> authService.login(EMAIL, "errada", Role.BARBEIRO));
+        Throwable senhaErrada = catchThrowable(() -> authService.login(EMAIL, "errada", Role.BARBEIRO, IP));
 
         when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(usuario(Role.CLIENTE)));
-        Throwable roleErrada = catchThrowable(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO));
+        Throwable roleErrada = catchThrowable(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO, IP));
 
         assertThat(emailInexistente).isInstanceOf(CredenciaisInvalidasException.class);
         assertThat(senhaErrada).isInstanceOf(CredenciaisInvalidasException.class);
@@ -104,7 +106,7 @@ class AuthServiceTest {
     void emailInexistenteAindaRodaOBcryptParaNaoEntregarPeloTempo() {
         when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
-        catchThrowable(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO));
+        catchThrowable(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO, IP));
 
         verify(passwordEncoder).matches(eq("senha123"), anyString());
     }
@@ -113,7 +115,7 @@ class AuthServiceTest {
     void roleErradaComSenhaCertaNaoAutentica() {
         when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(usuario(Role.CLIENTE)));
 
-        assertThatThrownBy(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO))
+        assertThatThrownBy(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO, IP))
                 .isInstanceOf(CredenciaisInvalidasException.class);
         verify(passwordEncoder, never()).matches("senha123", "hash");
     }
@@ -122,18 +124,18 @@ class AuthServiceTest {
     void falhaRegistraTentativa() {
         when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
-        catchThrowable(() -> authService.login(EMAIL, "x", Role.BARBEIRO));
+        catchThrowable(() -> authService.login(EMAIL, "x", Role.BARBEIRO, IP));
 
-        verify(limiteTentativas).registrarFalha(EMAIL);
+        verify(limiteTentativas).registrarFalha(EMAIL, IP);
         verify(limiteTentativas, never()).limpar(any());
         verify(eventos).loginFalhou(EMAIL);
     }
 
     @Test
     void emailBloqueadoNemConsultaOBanco() {
-        doThrow(new TentativasExcedidasException("bloqueado", 60)).when(limiteTentativas).verificar(EMAIL);
+        doThrow(new TentativasExcedidasException("bloqueado", 60)).when(limiteTentativas).verificar(EMAIL, IP);
 
-        assertThatThrownBy(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO))
+        assertThatThrownBy(() -> authService.login(EMAIL, "senha123", Role.BARBEIRO, IP))
                 .isInstanceOf(TentativasExcedidasException.class);
         verify(usuarioRepository, never()).findByEmail(any());
         verify(eventos).loginBloqueado(EMAIL);
@@ -162,7 +164,8 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.cadastroBarbeiro(
                 new BarbeiroCadastroRequest("Pessoa", "Barbearia", null, EMAIL, "senha123")))
-                .isInstanceOf(UsuarioExistenteException.class);
+                .isInstanceOf(UsuarioExistenteException.class)
+                .hasMessage(AuthService.CADASTRO_RECUSADO);
 
         verify(usuarioRepository, never()).save(any());
         verify(barbeiroRepository, never()).save(any());
@@ -226,7 +229,8 @@ class AuthServiceTest {
         when(clienteRepository.findByTelefoneAndBarbeiroId(TELEFONE, barbeiro.getId())).thenReturn(Optional.of(comConta));
 
         assertThatThrownBy(() -> authService.cadastroCliente(cadastro(barbeiro)))
-                .isInstanceOf(UsuarioExistenteException.class);
+                .isInstanceOf(UsuarioExistenteException.class)
+                .hasMessage(AuthService.CADASTRO_RECUSADO);
         verify(usuarioRepository, never()).save(any());
     }
 
@@ -238,7 +242,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.cadastroCliente(cadastro(barbeiro)))
                 .isInstanceOf(UsuarioExistenteException.class)
-                .hasMessageContaining("aguardando");
+                .hasMessage(AuthService.CADASTRO_RECUSADO);
         verify(usuarioRepository, never()).save(any());
     }
 }

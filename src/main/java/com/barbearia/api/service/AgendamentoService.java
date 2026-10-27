@@ -9,11 +9,13 @@ import com.barbearia.api.dto.agendamento.AgendamentoBarbeiroRequest;
 import com.barbearia.api.dto.agendamento.AgendamentoClienteRequest;
 import com.barbearia.api.dto.agendamento.AgendamentoResponse;
 import com.barbearia.api.dto.agendamento.MinhaBarbeariaResponse;
+import com.barbearia.api.enums.StatusAgendamento;
 import com.barbearia.api.exceptions.AgendamentoNaoEncontradoException;
 import com.barbearia.api.exceptions.ClienteNaoEncontradoException;
 import com.barbearia.api.exceptions.ClienteSemVinculoException;
 import com.barbearia.api.exceptions.HorarioIndisponivelException;
 import com.barbearia.api.exceptions.HorarioInvalidoException;
+import com.barbearia.api.exceptions.LimiteAgendamentosException;
 import com.barbearia.api.exceptions.ServicoNaoEncontradoException;
 import com.barbearia.api.exceptions.TransicaoAgendamentoInvalidaException;
 import com.barbearia.api.repositories.AgendamentoRepository;
@@ -35,6 +37,7 @@ import java.util.UUID;
 public class AgendamentoService {
 
     static final int MAXIMO_DIAS_NA_CONSULTA = 31;
+    static final int MAXIMO_FUTUROS_POR_CLIENTE = 3;
 
     private final AgendamentoRepository agendamentoRepository;
     private final ClienteRepository clienteRepository;
@@ -107,6 +110,7 @@ public class AgendamentoService {
     public AgendamentoResponse agendarComoCliente(Usuario logado, AgendamentoClienteRequest data) {
         Cliente cliente = clienteDe(logado);
         assinaturaService.exigirQueAceiteAgendamentos(cliente.getBarbeiro());
+        exigirVagaNoLimite(cliente);
 
         return resposta(agendar(cliente.getBarbeiro(), cliente, data.servicoId(), data.dataHora(), true));
     }
@@ -140,6 +144,15 @@ public class AgendamentoService {
         Agendamento agendamento = doCliente(logado, id);
         exigirQueNaoComecou(agendamento);
         return resposta(remarcar(agendamento, novoInicio, true));
+    }
+
+    private void exigirVagaNoLimite(Cliente cliente) {
+        long futuros = agendamentoRepository.countByClienteIdAndStatusAndDataHoraAfter(cliente.getId(),
+                StatusAgendamento.CONFIRMADO, relogio.agora());
+        if (futuros >= MAXIMO_FUTUROS_POR_CLIENTE) {
+            throw new LimiteAgendamentosException("Você já tem " + MAXIMO_FUTUROS_POR_CLIENTE
+                    + " horários marcados. Cancele um ou espere passar para marcar outro.");
+        }
     }
 
     private Agendamento agendar(Barbeiro barbeiro, Cliente cliente, UUID servicoId, LocalDateTime inicio,

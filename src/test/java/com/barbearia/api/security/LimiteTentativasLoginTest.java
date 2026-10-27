@@ -17,13 +17,15 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 class LimiteTentativasLoginTest {
 
     private static final String EMAIL = "alvo@ex.com";
+    private static final String IP = "203.0.113.10";
+    private static final String OUTRO_IP = "198.51.100.7";
 
     private final RelogioManual relogio = new RelogioManual();
     private final LimiteTentativasLogin limite = new LimiteTentativasLogin(relogio);
 
     private void falhar(int vezes) {
         for (int i = 0; i < vezes; i++) {
-            limite.registrarFalha(EMAIL);
+            limite.registrarFalha(EMAIL, IP);
         }
     }
 
@@ -31,7 +33,7 @@ class LimiteTentativasLoginTest {
     void abaixoDoLimiteLiberado() {
         falhar(LimiteTentativasLogin.MAXIMO_FALHAS - 1);
 
-        assertThatCode(() -> limite.verificar(EMAIL)).doesNotThrowAnyException();
+        assertThatCode(() -> limite.verificar(EMAIL, IP)).doesNotThrowAnyException();
     }
 
     @Test
@@ -39,7 +41,7 @@ class LimiteTentativasLoginTest {
         falhar(LimiteTentativasLogin.MAXIMO_FALHAS);
 
         TentativasExcedidasException ex = catchThrowableOfType(TentativasExcedidasException.class,
-                () -> limite.verificar(EMAIL));
+                () -> limite.verificar(EMAIL, IP));
 
         assertThat(ex).isNotNull();
         assertThat(ex.getSegundosParaLiberar()).isEqualTo(LimiteTentativasLogin.JANELA.toSeconds());
@@ -52,7 +54,7 @@ class LimiteTentativasLoginTest {
 
         relogio.avancar(LimiteTentativasLogin.JANELA);
 
-        assertThatCode(() -> limite.verificar(EMAIL)).doesNotThrowAnyException();
+        assertThatCode(() -> limite.verificar(EMAIL, IP)).doesNotThrowAnyException();
     }
 
     @Test
@@ -62,7 +64,7 @@ class LimiteTentativasLoginTest {
 
         falhar(1);
 
-        assertThatCode(() -> limite.verificar(EMAIL)).doesNotThrowAnyException();
+        assertThatCode(() -> limite.verificar(EMAIL, IP)).doesNotThrowAnyException();
     }
 
     @Test
@@ -71,15 +73,36 @@ class LimiteTentativasLoginTest {
 
         limite.limpar(EMAIL);
 
-        assertThatCode(() -> limite.verificar(EMAIL)).doesNotThrowAnyException();
+        assertThatCode(() -> limite.verificar(EMAIL, IP)).doesNotThrowAnyException();
     }
 
     @Test
     void bloqueioDeUmEmailNaoAfetaOutro() {
         falhar(LimiteTentativasLogin.MAXIMO_FALHAS);
 
-        assertThatThrownBy(() -> limite.verificar(EMAIL)).isInstanceOf(TentativasExcedidasException.class);
-        assertThatCode(() -> limite.verificar("outro@ex.com")).doesNotThrowAnyException();
+        assertThatThrownBy(() -> limite.verificar(EMAIL, IP)).isInstanceOf(TentativasExcedidasException.class);
+        assertThatCode(() -> limite.verificar("outro@ex.com", IP)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void falhasDeOutroIpNaoTrancamODonoDaConta() {
+        falhar(LimiteTentativasLogin.MAXIMO_FALHAS);
+
+        assertThatThrownBy(() -> limite.verificar(EMAIL, IP)).isInstanceOf(TentativasExcedidasException.class);
+        assertThatCode(() -> limite.verificar(EMAIL, OUTRO_IP)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void limparLiberaOEmailEmTodosOsIps() {
+        falhar(LimiteTentativasLogin.MAXIMO_FALHAS);
+        for (int i = 0; i < LimiteTentativasLogin.MAXIMO_FALHAS; i++) {
+            limite.registrarFalha(EMAIL, OUTRO_IP);
+        }
+
+        limite.limpar(EMAIL);
+
+        assertThatCode(() -> limite.verificar(EMAIL, IP)).doesNotThrowAnyException();
+        assertThatCode(() -> limite.verificar(EMAIL, OUTRO_IP)).doesNotThrowAnyException();
     }
 
     private static final class RelogioManual extends Clock {

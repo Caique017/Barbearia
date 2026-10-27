@@ -2,6 +2,7 @@ package com.barbearia.api.exceptions;
 
 import com.barbearia.api.dto.error.ErroResposta;
 import jakarta.servlet.http.HttpServletRequest;
+import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -36,7 +37,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({SlugIndisponivelException.class, ServicoDuplicadoException.class,
             HorarioIndisponivelException.class, TransicaoAgendamentoInvalidaException.class,
-            ClienteSemVinculoException.class, AssinaturaDuplicadaException.class})
+            ClienteSemVinculoException.class, AssinaturaDuplicadaException.class,
+            LimiteAgendamentosException.class})
     public ResponseEntity<ErroResposta> tratarConflito(RuntimeException ex, HttpServletRequest request) {
         return montar(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
@@ -69,8 +71,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErroResposta> tratarViolacaoIntegridade(DataIntegrityViolationException ex,
                                                                   HttpServletRequest request) {
-        log.warn("Violação de integridade ao processar {}: {}", request.getRequestURI(),
-                ex.getMostSpecificCause().getMessage());
+        String restricao = ex.getCause() instanceof ConstraintViolationException violacao
+                ? violacao.getConstraintName()
+                : ex.getMostSpecificCause().getClass().getSimpleName();
+        log.warn("Violação de integridade ao processar {}: restrição {}", request.getRequestURI(), restricao);
         return montar(HttpStatus.CONFLICT, "Já existe um registro com esses dados.", request);
     }
 

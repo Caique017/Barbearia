@@ -32,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     static final String CREDENCIAIS_INVALIDAS = "E-mail ou senha incorretos.";
+    static final String CADASTRO_RECUSADO =
+            "Não foi possível concluir o cadastro com esses dados. Se você já tem conta, entre ou recupere a senha.";
     private static final String HASH_FICTICIO = "$2a$10$e9/Xxgf3excYTfkmQBveiOCNXmdDJP9j.PW8kb5ETvtiq/IwoYYMC";
 
     private final UsuarioRepository usuarioRepository;
@@ -64,16 +66,16 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public BarbeiroLoginResponse loginBarbeiro(BarbeiroLoginRequest data) {
-        Usuario usuario = login(data.email(), data.senha(), Role.BARBEIRO);
+    public BarbeiroLoginResponse loginBarbeiro(BarbeiroLoginRequest data, String ip) {
+        Usuario usuario = login(data.email(), data.senha(), Role.BARBEIRO, ip);
 
         return new BarbeiroLoginResponse(tokenService.gerarToken(usuario), usuario.getNome(), usuario.getEmail());
     }
 
     @Transactional(readOnly = true)
-    public Usuario login(String email, String senha, Role rolePermitida) {
+    public Usuario login(String email, String senha, Role rolePermitida, String ip) {
         try {
-            limiteTentativas.verificar(email);
+            limiteTentativas.verificar(email, ip);
         } catch (TentativasExcedidasException e) {
             eventos.loginBloqueado(email);
             throw e;
@@ -86,7 +88,7 @@ public class AuthService {
         boolean senhaConfere = passwordEncoder.matches(senha, usuario != null ? usuario.getSenha() : HASH_FICTICIO);
 
         if (usuario == null || !senhaConfere) {
-            limiteTentativas.registrarFalha(email);
+            limiteTentativas.registrarFalha(email, ip);
             eventos.loginFalhou(email);
             throw new CredenciaisInvalidasException(CREDENCIAIS_INVALIDAS);
         }
@@ -114,12 +116,11 @@ public class AuthService {
                 .orElse(null);
 
         if (existente != null && existente.getUsuario() != null) {
-            throw new UsuarioExistenteException("Esse telefone já possui uma conta.");
+            throw new UsuarioExistenteException(CADASTRO_RECUSADO);
         }
 
         if (existente != null && existente.getUsuarioPendente() != null) {
-            throw new UsuarioExistenteException(
-                    "Já existe um pedido de vínculo para esse telefone aguardando o barbeiro.");
+            throw new UsuarioExistenteException(CADASTRO_RECUSADO);
         }
 
         Usuario usuario = criarUsuario(data.nome(), data.email(), data.senha(), Role.CLIENTE);
@@ -142,15 +143,15 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public ClienteLoginResponse loginCliente(ClienteLoginRequest data) {
-        Usuario usuario = login(data.email(), data.senha(), Role.CLIENTE);
+    public ClienteLoginResponse loginCliente(ClienteLoginRequest data, String ip) {
+        Usuario usuario = login(data.email(), data.senha(), Role.CLIENTE, ip);
 
         return new ClienteLoginResponse(tokenService.gerarToken(usuario), usuario.getNome(), usuario.getEmail());
     }
 
     private void garantirEmailLivre(String email) {
         if (usuarioRepository.findByEmail(email).isPresent()) {
-            throw new UsuarioExistenteException("O e-mail " + email + " já está em uso.");
+            throw new UsuarioExistenteException(CADASTRO_RECUSADO);
         }
     }
 
