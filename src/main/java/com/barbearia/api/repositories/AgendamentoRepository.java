@@ -37,6 +37,8 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, UUID> 
             """)
     List<Agendamento> doCliente(UUID clienteId);
 
+    long countByClienteIdAndStatusAndDataHoraAfter(UUID clienteId, StatusAgendamento status, LocalDateTime depois);
+
     Optional<Agendamento> findByIdAndBarbeiroId(UUID id, UUID barbeiroId);
 
     Optional<Agendamento> findByIdAndClienteId(UUID id, UUID clienteId);

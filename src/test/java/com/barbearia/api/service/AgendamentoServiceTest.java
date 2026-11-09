@@ -9,6 +9,7 @@ import com.barbearia.api.dto.agendamento.AgendamentoClienteRequest;
 import com.barbearia.api.enums.StatusAgendamento;
 import com.barbearia.api.exceptions.ClienteSemVinculoException;
 import com.barbearia.api.exceptions.HorarioIndisponivelException;
+import com.barbearia.api.exceptions.LimiteAgendamentosException;
 import com.barbearia.api.exceptions.HorarioInvalidoException;
 import com.barbearia.api.exceptions.ServicoNaoEncontradoException;
 import com.barbearia.api.exceptions.TransicaoAgendamentoInvalidaException;
@@ -109,6 +110,20 @@ class AgendamentoServiceTest {
         verify(disponibilidade).exigirLivre(barbeiro, AMANHA_10H, AMANHA_10H.plusMinutes(30), null, true);
         assertThat(resposta.status()).isEqualTo(StatusAgendamento.CONFIRMADO);
         assertThat(resposta.terminaEm()).isEqualTo(AMANHA_10H.plusMinutes(30));
+    }
+
+    @Test
+    void clienteComTresHorariosFuturosNaoMarcaOQuarto() {
+        clienteComVinculo();
+        when(relogio.agora()).thenReturn(AGORA);
+        when(agendamentoRepository.countByClienteIdAndStatusAndDataHoraAfter(cliente.getId(),
+                StatusAgendamento.CONFIRMADO, AGORA)).thenReturn((long) AgendamentoService.MAXIMO_FUTUROS_POR_CLIENTE);
+
+        assertThatThrownBy(() -> service.agendarComoCliente(usuario,
+                new AgendamentoClienteRequest(corte.getId(), AMANHA_10H)))
+                .isInstanceOf(LimiteAgendamentosException.class)
+                .hasMessageContaining("3 horários marcados");
+        verify(agendamentoRepository, never()).saveAndFlush(any());
     }
 
     @Test

@@ -10,7 +10,9 @@ import com.barbearia.api.dto.cliente.ClienteCadastroResponse;
 import com.barbearia.api.dto.cliente.ClienteLoginRequest;
 import com.barbearia.api.dto.cliente.ClienteLoginResponse;
 import com.barbearia.api.dto.usuario.UsuarioLogadoResponse;
+import com.barbearia.api.security.IpCliente;
 import com.barbearia.api.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final IpCliente ipCliente;
 
     @PostMapping("/barbeiro/registro")
     public ResponseEntity<BarbeiroCadastroResponse> registrar(@RequestBody @Valid BarbeiroCadastroRequest request) {
@@ -36,8 +39,9 @@ public class AuthController {
     }
 
     @PostMapping("/barbeiro/login")
-    public ResponseEntity<BarbeiroLoginResponse> login(@RequestBody @Valid BarbeiroLoginRequest request) {
-        BarbeiroLoginResponse response = authService.loginBarbeiro(request);
+    public ResponseEntity<BarbeiroLoginResponse> login(@RequestBody @Valid BarbeiroLoginRequest request,
+                                                       HttpServletRequest http) {
+        BarbeiroLoginResponse response = authService.loginBarbeiro(request, ipCliente.de(http));
         return ResponseEntity.ok(response);
     }
 
@@ -48,8 +52,9 @@ public class AuthController {
     }
 
     @PostMapping("/cliente/login")
-    public ResponseEntity<ClienteLoginResponse> loginCliente(@RequestBody @Valid ClienteLoginRequest request) {
-        ClienteLoginResponse response = authService.loginCliente(request);
+    public ResponseEntity<ClienteLoginResponse> loginCliente(@RequestBody @Valid ClienteLoginRequest request,
+                                                             HttpServletRequest http) {
+        ClienteLoginResponse response = authService.loginCliente(request, ipCliente.de(http));
         return ResponseEntity.ok(response);
     }
 
