@@ -383,14 +383,14 @@ GlobalExceptionHandler       qualquer exceção vira o envelope padrão
 ## Testes
 
 ```bash
-./mvnw test       # 220 unitários — sem banco, sem Docker, segundos
-./mvnw verify     # + 177 de integração com PostgreSQL 17 real (Docker aberto)
+./mvnw test       # 236 unitários — sem banco, sem Docker, segundos
+./mvnw verify     # + 190 de integração com PostgreSQL 17 real (Docker aberto)
 ```
 
 - **Unitários (`*Test`):** regras puras (calculadora, entidades, e-mail, telefone), services com Mockito, filtros de segurança e validação dos DTOs. O "agora" é sempre um `Clock` injetável.
 - **Integração (`*IT`):** `@SpringBootTest` + MockMvc contra um Postgres de verdade (Testcontainers), que nunca é o seu banco local. Cobrem:
   - a **matriz de segurança**: toda rota protegida contra sem token, token lixo e papel errado;
-  - os fluxos completos de agenda, bloqueios, vínculo e redefinição de senha;
+  - os fluxos completos de agenda, bloqueios, vínculo, redefinição de senha e LGPD (exportar, excluir, anonimizar, descadastro);
   - a constraint `EXCLUDE` direto no banco;
   - o webhook assinado com HMAC como o Stripe faz;
   - as migrations rodando sobre dados que já existiam.
@@ -401,7 +401,7 @@ O **nome da classe** decide onde o teste roda: `*Test` no Surefire, `*IT` no Fai
 
 ### CI (`.github/workflows/ci.yml`), em todo PR e push no `master`
 
-- `./mvnw verify`: os 397 testes, com Postgres via Testcontainers;
+- `./mvnw verify`: os 426 testes, com Postgres via Testcontainers;
 - `docker build` da imagem;
 - `terraform fmt -check` + `validate`;
 - *dependency review*, que falha em vulnerabilidade alta.
