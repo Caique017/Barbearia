@@ -5,6 +5,8 @@ import com.barbearia.api.enums.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -26,6 +28,19 @@ class TokenServiceTest {
         TokenService service = tokenService(SEGREDO, 2);
 
         assertThat(service.validarToken(service.gerarToken(USUARIO)).email()).isEqualTo("a@ex.com");
+    }
+
+    @Test
+    void tokenDeDescadastroDevolveOIdENaoServeParaLogin() {
+        TokenService service = tokenService(SEGREDO, 2);
+        Usuario usuario = Usuario.builder().id(UUID.randomUUID()).email("a@ex.com").role(Role.BARBEIRO).build();
+
+        String descadastro = service.gerarTokenDescadastro(usuario);
+
+        assertThat(service.validarTokenDescadastro(descadastro)).isEqualTo(usuario.getId());
+        assertThat(service.validarToken(descadastro)).isNull();
+        assertThat(service.validarTokenDescadastro(service.gerarToken(usuario))).isNull();
+        assertThat(service.validarTokenDescadastro("lixo")).isNull();
     }
 
     @Test

@@ -2,7 +2,9 @@ package com.barbearia.api.service;
 
 import com.barbearia.api.domain.Assinatura;
 import com.barbearia.api.enums.FormaPagamento;
+import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.repositories.AssinaturaRepository;
+import com.barbearia.api.security.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,13 +25,16 @@ public class LembreteRenovacaoPix {
 
     private final AssinaturaRepository assinaturaRepository;
     private final EmailService emailService;
+    private final TokenService tokenService;
     private final Clock clock;
     private final String urlFront;
 
-    public LembreteRenovacaoPix(AssinaturaRepository assinaturaRepository, EmailService emailService, Clock clock,
+    public LembreteRenovacaoPix(AssinaturaRepository assinaturaRepository, EmailService emailService,
+                                TokenService tokenService, Clock clock,
                                 @Value("${api.front.url}") String urlFront) {
         this.assinaturaRepository = assinaturaRepository;
         this.emailService = emailService;
+        this.tokenService = tokenService;
         this.clock = clock;
         this.urlFront = urlFront;
     }
@@ -42,8 +47,9 @@ public class LembreteRenovacaoPix {
                 agora.plus(ANTECEDENCIA));
 
         for (Assinatura assinatura : vencendo) {
-            emailService.enviarLembreteRenovacao(assinatura.getBarbeiro().getUsuario().getEmail(),
-                    assinatura.getBarbeiro().getUsuario().getNome(), urlFront + "/barbeiro/plano");
+            Usuario usuario = assinatura.getBarbeiro().getUsuario();
+            emailService.enviarLembreteRenovacao(usuario.getEmail(), usuario.getNome(), urlFront + "/barbeiro/plano",
+                    urlFront + "/descadastro?token=" + tokenService.gerarTokenDescadastro(usuario));
             assinatura.setLembreteEnviadoEm(agora);
         }
 

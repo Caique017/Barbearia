@@ -38,7 +38,7 @@ class ClienteRequestValidationTest {
     @Test
     void cadastroNormalizaTelefoneEEmail() {
         ClienteCadastroRequest request = new ClienteCadastroRequest(
-                "Carlos", "(11) 99999-8888", " Carlos@Ex.com", "senha123", UUID.randomUUID());
+                "Carlos", "(11) 99999-8888", " Carlos@Ex.com", "senha123", true, null, UUID.randomUUID());
 
         assertThat(request.telefone()).isEqualTo("11999998888");
         assertThat(request.email()).isEqualTo("carlos@ex.com");
@@ -48,7 +48,7 @@ class ClienteRequestValidationTest {
     @Test
     void cadastroExigeSenhaDe8Caracteres() {
         ClienteCadastroRequest request = new ClienteCadastroRequest(
-                "Carlos", "11999998888", "c@ex.com", "1234567", UUID.randomUUID());
+                "Carlos", "11999998888", "c@ex.com", "1234567", true, null, UUID.randomUUID());
 
         assertThat(camposInvalidos(request)).containsExactly("senha");
     }

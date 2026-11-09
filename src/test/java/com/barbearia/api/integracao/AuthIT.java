@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthIT extends IntegracaoBase {
 
     private String cadastroBarbeiro(String email, String nomeBarbearia, String senha) {
-        return json("nome", "Pessoa Teste", "nomeBarbearia", nomeBarbearia, "email", email, "senha", senha);
+        return comAceite(json("nome", "Pessoa Teste", "nomeBarbearia", nomeBarbearia, "email", email, "senha", senha));
     }
 
     private String login(String email, String senha) {

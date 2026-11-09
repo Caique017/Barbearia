@@ -9,24 +9,33 @@ import com.barbearia.api.dto.cliente.ClienteResumoResponse;
 import com.barbearia.api.exceptions.ClienteNaoEncontradoException;
 import com.barbearia.api.exceptions.UsuarioExistenteException;
 import com.barbearia.api.exceptions.VinculoNaoEncontradoException;
+import com.barbearia.api.repositories.AgendamentoRepository;
 import com.barbearia.api.repositories.ClienteRepository;
 import com.barbearia.api.repositories.UsuarioRepository;
+import com.barbearia.api.security.EventosSeguranca;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @Service
 public class ClienteService {
 
     private static final String TELEFONE_EM_USO = "Já existe um cliente com esse telefone.";
+    static final String NOME_ANONIMO = "Cliente removido";
+    static final String PREFIXO_TELEFONE_ANONIMO = "removido-";
 
     private final ClienteRepository clienteRepository;
     private final BarbeiroLogado barbeiroLogado;
     private final UsuarioRepository usuarioRepository;
+    private final AgendamentoRepository agendamentoRepository;
+    private final RelogioLocal relogio;
+    private final EventosSeguranca eventos;
 
     @Transactional
     public ClienteResumoResponse cadastrarPeloBarbeiro(Usuario logado, ClienteRapidoRequest data) {
@@ -98,6 +107,29 @@ public class ClienteService {
         cliente.setUsuarioPendente(null);
         clienteRepository.saveAndFlush(cliente);
         usuarioRepository.delete(pendente);
+    }
+
+    @Transactional
+    public ClienteResumoResponse anonimizar(Usuario logado, UUID clienteId) {
+        Cliente cliente = buscarCliente(logado, clienteId);
+        List<UUID> contas = Stream.of(cliente.getUsuario(), cliente.getUsuarioPendente())
+                .filter(Objects::nonNull)
+                .map(Usuario::getId)
+                .toList();
+
+        cliente.setUsuario(null);
+        cliente.setUsuarioPendente(null);
+        cliente.setNome(NOME_ANONIMO);
+        cliente.setTelefone(PREFIXO_TELEFONE_ANONIMO + cliente.getId());
+        clienteRepository.saveAndFlush(cliente);
+
+        agendamentoRepository.cancelarFuturosDoCliente(cliente.getId(), relogio.agora());
+        if (!contas.isEmpty()) {
+            usuarioRepository.apagarTodos(contas);
+        }
+        eventos.clienteAnonimizado(cliente.getId());
+
+        return resumo(cliente);
     }
 
     private Cliente buscarCliente(Usuario logado, UUID clienteId) {

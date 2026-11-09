@@ -32,7 +32,7 @@ class BarbeiroRequestValidationTest {
     }
 
     private static BarbeiroCadastroRequest cadastro(String nomeBarbearia, String horario, String senha) {
-        return new BarbeiroCadastroRequest("Pessoa Teste", nomeBarbearia, horario, "a@ex.com", senha);
+        return new BarbeiroCadastroRequest("Pessoa Teste", nomeBarbearia, horario, "a@ex.com", senha, true, null);
     }
 
     private static Set<String> camposInvalidos(Object request) {
@@ -66,6 +66,17 @@ class BarbeiroRequestValidationTest {
     }
 
     @Test
+    void cadastroSemAceiteDosTermosEInvalido() {
+        BarbeiroCadastroRequest semAceite = new BarbeiroCadastroRequest("Pessoa", "Barbearia", null, "a@ex.com",
+                "senha123", false, true);
+        BarbeiroCadastroRequest semCampo = new BarbeiroCadastroRequest("Pessoa", "Barbearia", null, "a@ex.com",
+                "senha123", null, null);
+
+        assertThat(camposInvalidos(semAceite)).containsExactly("aceiteTermos");
+        assertThat(camposInvalidos(semCampo)).containsExactly("aceiteTermos");
+    }
+
+    @Test
     void horarioNuloEValidoNoCadastro() {
         assertThat(camposInvalidos(cadastro("Barbearia", null, "senha123"))).isEmpty();
     }
@@ -94,7 +105,7 @@ class BarbeiroRequestValidationTest {
     @Test
     void cadastroNormalizaEmail() {
         BarbeiroCadastroRequest request = new BarbeiroCadastroRequest(
-                "Pessoa", "Barbearia", null, "  Joao@Ex.COM ", "senha123");
+                "Pessoa", "Barbearia", null, "  Joao@Ex.COM ", "senha123", true, null);
         assertThat(request.email()).isEqualTo("joao@ex.com");
     }
 

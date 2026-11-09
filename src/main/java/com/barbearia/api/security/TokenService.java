@@ -13,11 +13,13 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 @Service
 public class TokenService {
 
     private static final String ISSUER = "barbearia-api";
+    private static final String ISSUER_DESCADASTRO = "barbearia-api-descadastro";
     private static final String CLAIM_VERSAO_SESSAO = "sv";
     private static final int TAMANHO_MINIMO_SEGREDO = 32;
 
@@ -61,6 +63,25 @@ public class TokenService {
                     .verify(token);
             return new TokenAutenticacao(jwt.getSubject(), jwt.getClaim(CLAIM_VERSAO_SESSAO).asInt());
         } catch (JWTVerificationException e) {
+            return null;
+        }
+    }
+
+    public String gerarTokenDescadastro(Usuario usuario) {
+        return JWT.create()
+                .withIssuer(ISSUER_DESCADASTRO)
+                .withSubject(usuario.getId().toString())
+                .sign(Algorithm.HMAC256(secret));
+    }
+
+    public UUID validarTokenDescadastro(String token) {
+        try {
+            DecodedJWT jwt = JWT.require(Algorithm.HMAC256(secret))
+                    .withIssuer(ISSUER_DESCADASTRO)
+                    .build()
+                    .verify(token);
+            return jwt.getSubject() == null ? null : UUID.fromString(jwt.getSubject());
+        } catch (JWTVerificationException | IllegalArgumentException e) {
             return null;
         }
     }

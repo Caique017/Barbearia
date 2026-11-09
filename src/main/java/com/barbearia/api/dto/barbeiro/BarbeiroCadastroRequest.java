@@ -1,5 +1,6 @@
 package com.barbearia.api.dto.barbeiro;
 
+import com.barbearia.api.service.TermosDeUso;
 import com.barbearia.api.util.Emails;
 import com.barbearia.api.validation.MaxBytes;
 import jakarta.validation.constraints.*;
@@ -24,7 +25,11 @@ public record BarbeiroCadastroRequest(
         @NotBlank
         @Size(min = 8, max = 64, message = "A senha deve ter entre 8 e 64 caracteres.")
         @MaxBytes(value = 72, message = "A senha é longa demais.")
-        String senha
+        String senha,
+        @NotNull(message = TermosDeUso.ACEITE_OBRIGATORIO)
+        @AssertTrue(message = TermosDeUso.ACEITE_OBRIGATORIO)
+        Boolean aceiteTermos,
+        Boolean aceiteMarketing
 ) {
     public BarbeiroCadastroRequest {
         email = Emails.normalizar(email);

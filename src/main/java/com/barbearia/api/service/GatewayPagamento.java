@@ -15,6 +15,8 @@ public interface GatewayPagamento {
 
     String criarPortal(String clienteId);
 
+    void excluirCliente(String clienteId);
+
     Evento lerEvento(String payload, String assinatura);
 
     enum TipoEvento {

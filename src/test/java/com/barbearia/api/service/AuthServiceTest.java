@@ -147,7 +147,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode("senha123")).thenReturn("hash");
 
         BarbeiroCadastroResponse response = authService.cadastroBarbeiro(
-                new BarbeiroCadastroRequest("Pessoa", "Barbearia Nova", null, EMAIL, "senha123"));
+                new BarbeiroCadastroRequest("Pessoa", "Barbearia Nova", null, EMAIL, "senha123", true, true));
 
         ArgumentCaptor<Barbeiro> salvo = ArgumentCaptor.forClass(Barbeiro.class);
         verify(barbeiroRepository).save(salvo.capture());
@@ -155,6 +155,9 @@ class AuthServiceTest {
         assertThat(salvo.getValue().getNomeBarbearia()).isEqualTo("Barbearia Nova");
         assertThat(salvo.getValue().getUsuario().getRole()).isEqualTo(Role.BARBEIRO);
         assertThat(salvo.getValue().getUsuario().getSenha()).isEqualTo("hash");
+        assertThat(salvo.getValue().getUsuario().getTermosVersao()).isEqualTo(TermosDeUso.VERSAO);
+        assertThat(salvo.getValue().getUsuario().getTermosAceitosEm()).isNotNull();
+        assertThat(salvo.getValue().getUsuario().aceitaMarketing()).isTrue();
         verify(assinaturaService).iniciarTeste(salvo.getValue());
     }
 
@@ -163,7 +166,7 @@ class AuthServiceTest {
         when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(new Usuario()));
 
         assertThatThrownBy(() -> authService.cadastroBarbeiro(
-                new BarbeiroCadastroRequest("Pessoa", "Barbearia", null, EMAIL, "senha123")))
+                new BarbeiroCadastroRequest("Pessoa", "Barbearia", null, EMAIL, "senha123", true, null)))
                 .isInstanceOf(UsuarioExistenteException.class)
                 .hasMessage(AuthService.CADASTRO_RECUSADO);
 
@@ -192,7 +195,7 @@ class AuthServiceTest {
     }
 
     private static ClienteCadastroRequest cadastro(Barbeiro barbeiro) {
-        return new ClienteCadastroRequest("Invasor", TELEFONE, EMAIL, "senha123", barbeiro.getId());
+        return new ClienteCadastroRequest("Invasor", TELEFONE, EMAIL, "senha123", true, null, barbeiro.getId());
     }
 
     @Test
