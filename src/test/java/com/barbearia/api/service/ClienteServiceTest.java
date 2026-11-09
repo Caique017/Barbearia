@@ -9,8 +9,10 @@ import com.barbearia.api.dto.cliente.ClienteResumoResponse;
 import com.barbearia.api.exceptions.ClienteNaoEncontradoException;
 import com.barbearia.api.exceptions.UsuarioExistenteException;
 import com.barbearia.api.exceptions.VinculoNaoEncontradoException;
+import com.barbearia.api.repositories.AgendamentoRepository;
 import com.barbearia.api.repositories.ClienteRepository;
 import com.barbearia.api.repositories.UsuarioRepository;
+import com.barbearia.api.security.EventosSeguranca;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +41,12 @@ class ClienteServiceTest {
     private BarbeiroLogado barbeiroLogado;
     @Mock
     private UsuarioRepository usuarioRepository;
+    @Mock
+    private AgendamentoRepository agendamentoRepository;
+    @Mock
+    private RelogioLocal relogio;
+    @Mock
+    private EventosSeguranca eventos;
 
     @InjectMocks
     private ClienteService clienteService;
@@ -152,5 +162,36 @@ class ClienteServiceTest {
         assertThat(resumo.temConta()).isFalse();
         assertThat(resumo.pedidoVinculo().nome()).isEqualTo("Invasor");
         assertThat(resumo.pedidoVinculo().email()).isEqualTo("invasor@ex.com");
+    }
+
+    @Test
+    void anonimizarApagaNomeTelefoneEContasECancelaOsFuturos() {
+        Usuario conta = Usuario.builder().id(UUID.randomUUID()).build();
+        Usuario pendente = Usuario.builder().id(UUID.randomUUID()).build();
+        cliente.setUsuario(conta);
+        cliente.setUsuarioPendente(pendente);
+        LocalDateTime agora = LocalDateTime.of(2026, 11, 9, 10, 0);
+        when(relogio.agora()).thenReturn(agora);
+        clienteEncontrado();
+
+        ClienteResumoResponse resumo = clienteService.anonimizar(logado, cliente.getId());
+
+        assertThat(resumo.nome()).isEqualTo(ClienteService.NOME_ANONIMO);
+        assertThat(resumo.telefone()).isEqualTo(ClienteService.PREFIXO_TELEFONE_ANONIMO + cliente.getId());
+        assertThat(resumo.temConta()).isFalse();
+        assertThat(resumo.pedidoVinculo()).isNull();
+        verify(clienteRepository).saveAndFlush(cliente);
+        verify(agendamentoRepository).cancelarFuturosDoCliente(cliente.getId(), agora);
+        verify(usuarioRepository).apagarTodos(List.of(conta.getId(), pendente.getId()));
+    }
+
+    @Test
+    void anonimizarClienteSemContaNaoApagaUsuario() {
+        when(relogio.agora()).thenReturn(LocalDateTime.of(2026, 11, 9, 10, 0));
+        clienteEncontrado();
+
+        clienteService.anonimizar(logado, cliente.getId());
+
+        verify(usuarioRepository, never()).apagarTodos(any());
     }
 }

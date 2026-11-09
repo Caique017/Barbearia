@@ -4,6 +4,7 @@ import com.barbearia.api.enums.FormaPagamento;
 import com.barbearia.api.exceptions.PagamentoIndisponivelException;
 import com.barbearia.api.exceptions.WebhookInvalidoException;
 import com.stripe.exception.EventDataObjectDeserializationException;
+import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
@@ -116,6 +117,22 @@ public class StripeGateway implements GatewayPagamento {
                             .build(), opcoes()).getUrl();
         } catch (StripeException e) {
             throw falha("abrir o portal de pagamento", e);
+        }
+    }
+
+    @Override
+    public void excluirCliente(String clienteId) {
+        try {
+            Customer cliente = Customer.retrieve(clienteId, opcoes());
+            if (!Boolean.TRUE.equals(cliente.getDeleted())) {
+                cliente.delete(opcoes());
+            }
+        } catch (InvalidRequestException e) {
+            if (!"resource_missing".equals(e.getCode())) {
+                throw falha("excluir o cliente", e);
+            }
+        } catch (StripeException e) {
+            throw falha("excluir o cliente", e);
         }
     }
 

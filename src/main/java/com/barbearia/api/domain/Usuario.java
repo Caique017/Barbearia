@@ -54,9 +54,44 @@ public class Usuario implements UserDetails {
     @Column(name = "termos_versao", length = 20)
     private String termosVersao;
 
+    @Column(name = "marketing_aceito_em")
+    private Instant marketingAceitoEm;
+
+    @Column(name = "lembretes_desligados_em")
+    private Instant lembretesDesligadosEm;
+
     public void aceitarTermos(String versao, Instant agora) {
         termosVersao = versao;
         termosAceitosEm = agora;
+    }
+
+    public boolean aceitaMarketing() {
+        return marketingAceitoEm != null;
+    }
+
+    public boolean recebeLembretes() {
+        return lembretesDesligadosEm == null;
+    }
+
+    public void definirMarketing(boolean aceita, Instant agora) {
+        if (aceita && marketingAceitoEm == null) {
+            marketingAceitoEm = agora;
+        } else if (!aceita) {
+            marketingAceitoEm = null;
+        }
+    }
+
+    public void definirLembretes(boolean recebe, Instant agora) {
+        if (!recebe && lembretesDesligadosEm == null) {
+            lembretesDesligadosEm = agora;
+        } else if (recebe) {
+            lembretesDesligadosEm = null;
+        }
+    }
+
+    public void descadastrar(Instant agora) {
+        definirMarketing(false, agora);
+        definirLembretes(false, agora);
     }
 
     public boolean aceitaVersaoDeSessao(int versao) {

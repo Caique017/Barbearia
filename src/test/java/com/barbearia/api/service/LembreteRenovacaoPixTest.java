@@ -5,6 +5,7 @@ import com.barbearia.api.domain.Barbeiro;
 import com.barbearia.api.domain.Usuario;
 import com.barbearia.api.enums.FormaPagamento;
 import com.barbearia.api.repositories.AssinaturaRepository;
+import com.barbearia.api.security.TokenService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -25,17 +26,22 @@ class LembreteRenovacaoPixTest {
         Instant agora = Instant.parse("2026-10-20T12:00:00Z");
         AssinaturaRepository repository = mock(AssinaturaRepository.class);
         EmailService emailService = mock(EmailService.class);
+        TokenService tokenService = mock(TokenService.class);
         Usuario dono = Usuario.builder().nome("Ana").email("ana@ex.com").build();
         Assinatura assinatura = Assinatura.emTeste(Barbeiro.builder().usuario(dono).build(),
                 agora.minus(Duration.ofDays(30)), Duration.ofDays(7));
         when(repository.vencendoSemLembrete(FormaPagamento.PIX, agora, agora.plus(Duration.ofDays(3))))
                 .thenReturn(List.of(assinatura));
 
-        int enviados = new LembreteRenovacaoPix(repository, emailService, Clock.fixed(agora, ZoneOffset.UTC),
+        when(tokenService.gerarTokenDescadastro(dono)).thenReturn("tk");
+
+        int enviados = new LembreteRenovacaoPix(repository, emailService, tokenService,
+                Clock.fixed(agora, ZoneOffset.UTC),
                 "https://site").enviar();
 
         assertThat(enviados).isEqualTo(1);
         assertThat(assinatura.getLembreteEnviadoEm()).isEqualTo(agora);
-        verify(emailService).enviarLembreteRenovacao("ana@ex.com", "Ana", "https://site/barbeiro/plano");
+        verify(emailService).enviarLembreteRenovacao("ana@ex.com", "Ana", "https://site/barbeiro/plano",
+                "https://site/descadastro?token=tk");
     }
 }

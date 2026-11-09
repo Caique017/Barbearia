@@ -65,11 +65,11 @@ abstract class IntegracaoBase {
 
     protected BarbeiroCriado registrarBarbeiro(String nomeBarbearia) throws Exception {
         String email = emailUnico();
-        MvcResult cadastro = chamar("POST", "/auth/barbeiro/registro", null, json(
+        MvcResult cadastro = chamar("POST", "/auth/barbeiro/registro", null, comAceite(json(
                 "nome", "Pessoa Teste",
                 "nomeBarbearia", nomeBarbearia,
                 "email", email,
-                "senha", SENHA))
+                "senha", SENHA)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
@@ -87,12 +87,16 @@ abstract class IntegracaoBase {
 
     protected ResultActions registrarCliente(String barbeiroId, String nome, String telefone, String email)
             throws Exception {
-        return chamar("POST", "/auth/cliente/registro", null, json(
+        return chamar("POST", "/auth/cliente/registro", null, comAceite(json(
                 "nome", nome,
                 "telefone", telefone,
                 "email", email,
                 "senha", SENHA,
-                "barbeiroId", barbeiroId));
+                "barbeiroId", barbeiroId)));
+    }
+
+    protected static String comAceite(String corpo) {
+        return corpo.substring(0, corpo.length() - 1) + ",\"aceiteTermos\":true}";
     }
 
     protected String cadastrarClientePeloBarbeiro(String tokenBarbeiro, String nome, String telefone)

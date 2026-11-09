@@ -43,7 +43,7 @@ public class EmailService {
     }
 
     @Async
-    public void enviarLembreteRenovacao(String para, String nome, String link) {
+    public void enviarLembreteRenovacao(String para, String nome, String link, String linkDescadastro) {
         SimpleMailMessage mensagem = new SimpleMailMessage();
         mensagem.setFrom(remetente);
         mensagem.setTo(para);
@@ -51,7 +51,8 @@ public class EmailService {
         mensagem.setText("Olá, " + nome + "!\n\n"
                 + "O mês pago no Pix termina em 3 dias. Para a agenda continuar aberta, renove por aqui:\n\n"
                 + link + "\n\n"
-                + "Se preferir não se preocupar com isso, assine no cartão: a renovação passa a ser automática.");
+                + "Se preferir não se preocupar com isso, assine no cartão: a renovação passa a ser automática.\n\n"
+                + "Não quer mais receber estes lembretes? " + linkDescadastro);
 
         enviar(mensagem, "lembrete de renovação");
     }

@@ -8,7 +8,7 @@ API REST do **ClipBook**, sistema de agendamento e gestão para o **barbeiro que
 
 O front fica em [Caique017/Barbearia-web](https://github.com/Caique017/Barbearia-web).
 
-> **Status (out/2026):** API completa para a V1, com todas as issues fechadas e 397 testes verdes. O CI roda em todo PR. A infraestrutura AWS está escrita em Terraform e o deploy automático está pronto, mas **ainda não foi aplicado**.
+> **Status (nov/2026):** API completa para a V1, agora com **LGPD** (aceite dos termos, exportar e excluir a conta, anonimizar cliente, descadastro de e-mails) e o endurecimento de segurança da revisão de out/2026. O CI roda em todo PR. A infraestrutura AWS está escrita em Terraform e o deploy automático está pronto; a primeira subida está planejada para nov/2026.
 
 ---
 
@@ -44,6 +44,7 @@ O front fica em [Caique017/Barbearia-web](https://github.com/Caique017/Barbearia
 | **Agenda** | Agendamento pelo barbeiro (pode ser fora do expediente) e pelo cliente; concluir, faltou, cancelar, remarcar |
 | **Financeiro** | Movimento gerado ao concluir; resumo por período com faturamento, custos, lucro, resumo por dia e **mix de serviços** |
 | **Assinatura** | 7 dias grátis + R$ 29,99/mês pelo Stripe: **cartão recorrente** ou **Pix de 30 dias**; vencido = só leitura (402) |
+| **LGPD** | Aceite dos termos (18+) guardado com versão e data; novidades só com opt-in; **baixar meus dados** (JSON), **excluir a conta**, **anonimizar cliente** da carteira; link de descadastro nos e-mails |
 
 ## Stack
 
@@ -52,7 +53,7 @@ O front fica em [Caique017/Barbearia-web](https://github.com/Caique017/Barbearia
 | Linguagem | Java 21 (LTS) |
 | Framework | Spring Boot 4.1.1: Web MVC, Data JPA, Security, Validation, Mail, Actuator |
 | Banco | PostgreSQL 17, com a extensão `btree_gist` |
-| Migrations | Flyway (`V1` a `V11`), com Hibernate em `ddl-auto=validate` |
+| Migrations | Flyway (`V1` a `V14`), com Hibernate em `ddl-auto=validate` |
 | Autenticação | JWT stateless (auth0 java-jwt 4.6.2, HMAC256) + BCrypt |
 | Pagamentos | Stripe Java 34 (Checkout, Billing, Customer Portal, webhooks) |
 | JSON | Jackson 3 (`tools.jackson.databind`) |
@@ -122,15 +123,15 @@ docker build -t barbearia-api .
 
 `🌐` público · `💈` barbeiro · `👤` cliente · `🔑` qualquer usuário logado
 
-Autenticação por `Authorization: Bearer <token>`. São 46 rotas, mais o `/actuator/health`.
+Autenticação por `Authorization: Bearer <token>`. São 52 rotas, mais o `/actuator/health`.
 
 ### Conta — `/auth`
 
 | | Método | Rota | O que faz |
 |---|---|---|---|
-| 🌐 | POST | `/auth/barbeiro/registro` | Cria usuário + barbearia, gera o slug e inicia os 7 dias de teste. Devolve token e slug |
+| 🌐 | POST | `/auth/barbeiro/registro` | Cria usuário + barbearia, gera o slug e inicia os 7 dias de teste. Exige `aceiteTermos: true`; `aceiteMarketing` é opcional. Devolve token e slug |
 | 🌐 | POST | `/auth/barbeiro/login` | Login do barbeiro |
-| 🌐 | POST | `/auth/cliente/registro` | Conta de cliente numa barbearia (`barbeiroId`). Se o telefone já está na carteira, vira **pedido de vínculo** |
+| 🌐 | POST | `/auth/cliente/registro` | Conta de cliente numa barbearia (`barbeiroId`), com os mesmos aceites. Se o telefone já está na carteira, vira **pedido de vínculo** |
 | 🌐 | POST | `/auth/cliente/login` | Login do cliente |
 | 🔑 | GET | `/auth/me` | Dados do usuário do token |
 | 🔑 | POST | `/auth/sair` | Encerra **todas** as sessões (tokens antigos param de valer) |
@@ -159,6 +160,16 @@ Autenticação por `Authorization: Bearer <token>`. São 46 rotas, mais o `/actu
 | GET / PATCH | `/clientes/{id}` | Detalhe / corrigir nome e telefone |
 | POST | `/clientes/{id}/vinculo` | Aprova o pedido: a conta passa a ser deste cliente |
 | DELETE | `/clientes/{id}/vinculo` | Recusa o pedido e apaga a conta que pediu |
+| POST | `/clientes/{id}/anonimizar` | LGPD: troca nome e telefone, apaga as contas ligadas e cancela os horários futuros. O histórico e o caixa ficam, sem identificar a pessoa. Liberado mesmo com o plano vencido |
+
+### Dados da conta (LGPD) — `/conta`
+
+| | Método | Rota | O que faz |
+|---|---|---|---|
+| 🔑 | GET | `/conta/dados` | Exporta tudo do usuário em JSON (barbeiro: barbearia, serviços, horários, bloqueios, clientes e agendamentos; cliente: cadastro e agendamentos) |
+| 🔑 | POST | `/conta/excluir` | `{senha}`. Barbeiro: apaga o cliente no Stripe (cancela a assinatura), as contas dos clientes e a barbearia em cascata. Cliente: cancela os futuros e apaga a conta. Senha errada → **400** |
+| 🔑 | GET / PATCH | `/conta/preferencias` | `{marketing, lembretes}`: novidades por e-mail (opt-in) e lembrete do Pix |
+| 🌐 | POST | `/conta/descadastro` | `{token}` do link "parar de receber" dos e-mails; desliga lembretes e novidades sem login |
 
 ### Serviços — `/servicos` 💈
 
@@ -245,7 +256,7 @@ Os candidatos vêm de 15 em 15 minutos. O cálculo está numa classe pura, a `Ca
 ### Agendamento
 
 - **Barbeiro:** pode encaixar fora do expediente. Agendamento sobreposto, bloqueio e horário no passado continuam barrados.
-- **Cliente:** precisa de conta com **vínculo aprovado** e de um horário dentro do expediente.
+- **Cliente:** precisa de conta com **vínculo aprovado** e de um horário dentro do expediente. No máximo **3 agendamentos futuros** por cliente (409).
 - **Duas pessoas no mesmo horário:** a constraint `EXCLUDE USING gist (barbeiro_id WITH =, tsrange(data_hora, termina_em) WITH &&)` faz o Postgres recusar a sobreposição. Isso vale mesmo quando duas requisições chegam juntas.
 - **Preço da época:** o agendamento guarda preço, custo e duração da hora em que foi marcado. Mudar o preço do serviço não altera a agenda nem o financeiro passados.
 
@@ -285,7 +296,9 @@ Para configurar o Stripe (produto, preço, Pix, portal e webhook), veja a nota *
 | **Duas barreiras de autorização** | O `SecurityConfig` decide se a request entra; o `@PreAuthorize` em cada controller decide se o método roda |
 | **Dono resolvido na consulta** | `findByIdAndBarbeiroId`: o registro de outro barbeiro devolve **404**, nunca 403 |
 | **Login vago** | A mesma mensagem e o mesmo tempo (BCrypt sempre roda) para e-mail inexistente, senha errada e papel errado |
-| **Limites** | 5 falhas por e-mail em 15 min (login); por IP nas rotas públicas de login, cadastro e senha |
+| **Cadastro vago** | O cadastro recusado devolve a mesma mensagem genérica para e-mail ou telefone já usados: não dá para descobrir quem tem conta |
+| **Limites** | 5 falhas de login por **e-mail + IP** em 15 min (ninguém tranca a conta dos outros); por IP nas rotas públicas de login, cadastro e senha |
+| **LGPD** | Exclusão em cascata no banco (`V13`); token de descadastro com emissor próprio, que não serve como login; logs sem dados pessoais nas violações de integridade |
 | **Esqueci a senha** | Token de 256 bits; só o **hash** fica no banco; uso único com update condicional; e-mail enviado **depois do commit**; job limpa os tokens vencidos |
 | **Headers** | CSP `default-src 'none'`, HSTS, `Referrer-Policy: no-referrer`, `nosniff`, `X-Frame-Options: DENY` |
 | **CORS fechado** | Nada liberado por padrão; em produção, só a origem do próprio site |
@@ -328,6 +341,9 @@ evento_pagamento                       (ids de webhook já processados)
 | V9 | agendamento, horário de atendimento e financeiro (`btree_gist`) |
 | V10 | bloqueios |
 | V11 | assinatura e eventos de pagamento |
+| V12 | cancelamento agendado da assinatura |
+| V13 | LGPD: aceite dos termos e chaves estrangeiras com `on delete cascade` / `set null` |
+| V14 | consentimentos: novidades por e-mail e lembretes desligados |
 
 ## Estrutura do código
 
@@ -437,8 +453,7 @@ O job só roda depois que a variável `AWS_ROLE_ARN` é configurada no repositó
 - **Trecho CloudFront → EC2 em HTTP.** Ele é fechado por IP e por header secreto, mas TLS até a origem exige domínio próprio.
 - **Limites em memória.** Valem por instância e zeram ao reiniciar; com mais de uma instância, precisam de Redis ou WAF.
 - **Uma EC2 só.** Não há alta disponibilidade.
-- **O cadastro revela se o e-mail existe** (409). O limite por IP reduz o estrago.
 - **Token de 2h sem refresh.**
-- **Sem "arquivar cliente".** Apagar um cliente com agendamentos esbarra na FK.
+- **Reembolso do arrependimento (7 dias) é manual**, pelo painel do Stripe, a pedido por e-mail.
 - **O e-mail é único no sistema.** Um cliente de duas barbearias precisa de duas contas.
 - **SES em sandbox** até pedir acesso de produção. Até lá, o "esqueci a senha" só entrega para endereços verificados.

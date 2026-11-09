@@ -106,6 +106,11 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
+    @ExceptionHandler({SenhaIncorretaException.class, DescadastroInvalidoException.class})
+    public ResponseEntity<ErroResposta> tratarPedidoDaConta(RuntimeException ex, HttpServletRequest request) {
+        return montar(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErroResposta> tratarValidacao(MethodArgumentNotValidException ex,
                                                         HttpServletRequest request) {

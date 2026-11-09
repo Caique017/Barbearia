@@ -51,7 +51,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/auth/barbeiro/registro", "/auth/barbeiro/login",
                                 "/auth/cliente/registro", "/auth/cliente/login",
-                                "/auth/senha/esqueci", "/auth/senha/redefinir", "/pagamentos/webhook").permitAll()
+                                "/auth/senha/esqueci", "/auth/senha/redefinir", "/pagamentos/webhook",
+                                "/conta/descadastro").permitAll()
                         .requestMatchers(HttpMethod.GET, "/barbeiros/publico/*", "/barbeiros/publico/*/servicos",
                                 "/barbeiros/publico/*/disponibilidade", "/actuator/health").permitAll()
                         .anyRequest().authenticated()

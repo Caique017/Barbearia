@@ -15,13 +15,15 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
 public class AssinaturaInterceptor implements HandlerInterceptor {
 
     private static final Set<String> METODOS_DE_LEITURA = Set.of("GET", "HEAD", "OPTIONS");
-    private static final List<String> SEMPRE_LIBERADOS = List.of("/auth/", "/assinatura", "/pagamentos/");
+    private static final List<String> SEMPRE_LIBERADOS = List.of("/auth/", "/assinatura", "/pagamentos/", "/conta/");
+    private static final Pattern ANONIMIZAR_CLIENTE = Pattern.compile("/clientes/[^/]+/anonimizar");
 
     private final AssinaturaService assinaturaService;
     private final BarbeiroLogado barbeiroLogado;
@@ -34,7 +36,8 @@ public class AssinaturaInterceptor implements HandlerInterceptor {
         }
 
         String caminho = request.getRequestURI().substring(request.getContextPath().length());
-        if (SEMPRE_LIBERADOS.stream().anyMatch(caminho::startsWith)) {
+        if (SEMPRE_LIBERADOS.stream().anyMatch(caminho::startsWith)
+                || ANONIMIZAR_CLIENTE.matcher(caminho).matches()) {
             return true;
         }
 

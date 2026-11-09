@@ -19,6 +19,7 @@ public interface AssinaturaRepository extends JpaRepository<Assinatura, UUID> {
     @Query("""
             select a from Assinatura a join fetch a.barbeiro b join fetch b.usuario
             where a.formaPagamento = :forma and a.acessoAte between :de and :ate and a.lembreteEnviadoEm is null
+              and b.usuario.lembretesDesligadosEm is null
             """)
     List<Assinatura> vencendoSemLembrete(FormaPagamento forma, Instant de, Instant ate);
 }

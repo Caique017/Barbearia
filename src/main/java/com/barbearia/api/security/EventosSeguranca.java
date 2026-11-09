@@ -1,9 +1,12 @@
 package com.barbearia.api.security;
 
+import com.barbearia.api.enums.Role;
 import com.barbearia.api.util.Emails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 @Component
 public class EventosSeguranca {
@@ -36,5 +39,17 @@ public class EventosSeguranca {
 
     public void sessoesEncerradas(String email) {
         log.info("evento=sessoes_encerradas email={}", Emails.mascarar(email));
+    }
+
+    public void dadosExportados(String email) {
+        log.info("evento=dados_exportados email={}", Emails.mascarar(email));
+    }
+
+    public void contaExcluida(String email, Role tipo) {
+        log.info("evento=conta_excluida tipo={} email={}", tipo, Emails.mascarar(email));
+    }
+
+    public void clienteAnonimizado(UUID clienteId) {
+        log.info("evento=cliente_anonimizado cliente={}", clienteId);
     }
 }

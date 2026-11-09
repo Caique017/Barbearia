@@ -52,7 +52,8 @@ public class AuthService {
     public BarbeiroCadastroResponse cadastroBarbeiro(BarbeiroCadastroRequest data) {
         garantirEmailLivre(data.email());
 
-        Usuario usuario = criarUsuario(data.nome(), data.email(), data.senha(), Role.BARBEIRO);
+        Usuario usuario = criarUsuario(data.nome(), data.email(), data.senha(), Role.BARBEIRO,
+                Boolean.TRUE.equals(data.aceiteMarketing()));
 
         Barbeiro barbeiro = Barbeiro.builder()
                 .usuario(usuario)
@@ -125,7 +126,8 @@ public class AuthService {
             throw new UsuarioExistenteException(CADASTRO_RECUSADO);
         }
 
-        Usuario usuario = criarUsuario(data.nome(), data.email(), data.senha(), Role.CLIENTE);
+        Usuario usuario = criarUsuario(data.nome(), data.email(), data.senha(), Role.CLIENTE,
+                Boolean.TRUE.equals(data.aceiteMarketing()));
 
         boolean vinculoPendente = existente != null;
         if (vinculoPendente) {
@@ -157,14 +159,16 @@ public class AuthService {
         }
     }
 
-    private Usuario criarUsuario(String nome, String email, String senha, Role role) {
+    private Usuario criarUsuario(String nome, String email, String senha, Role role, boolean aceitaMarketing) {
         Usuario usuario = Usuario.builder()
                 .nome(nome)
                 .email(email)
                 .senha(passwordEncoder.encode(senha))
                 .role(role)
                 .build();
-        usuario.aceitarTermos(TermosDeUso.VERSAO, Instant.now());
+        Instant agora = Instant.now();
+        usuario.aceitarTermos(TermosDeUso.VERSAO, agora);
+        usuario.definirMarketing(aceitaMarketing, agora);
         usuarioRepository.save(usuario);
         return usuario;
     }

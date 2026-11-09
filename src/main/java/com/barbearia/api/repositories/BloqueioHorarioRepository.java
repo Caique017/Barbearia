@@ -20,5 +20,7 @@ public interface BloqueioHorarioRepository extends JpaRepository<BloqueioHorario
 
     List<BloqueioHorario> findByBarbeiroIdAndFimAfterOrderByInicio(UUID barbeiroId, LocalDateTime agora);
 
+    List<BloqueioHorario> findByBarbeiroIdOrderByInicio(UUID barbeiroId);
+
     Optional<BloqueioHorario> findByIdAndBarbeiroId(UUID id, UUID barbeiroId);
 }

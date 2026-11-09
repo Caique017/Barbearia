@@ -56,6 +56,12 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.aprovarVinculo(usuario, id));
     }
 
+    @PostMapping("/{id}/anonimizar")
+    public ResponseEntity<ClienteResumoResponse> anonimizar(@AuthenticationPrincipal Usuario usuario,
+                                                            @PathVariable UUID id) {
+        return ResponseEntity.ok(clienteService.anonimizar(usuario, id));
+    }
+
     @DeleteMapping("/{id}/vinculo")
     public ResponseEntity<Void> recusarVinculo(@AuthenticationPrincipal Usuario usuario, @PathVariable UUID id) {
         clienteService.recusarVinculo(usuario, id);
